@@ -1,0 +1,14 @@
+{
+    "name": "Test Profile 1",
+    "description": "Test profile description",
+    "oldSqlFilePath": "C:\\sql\\old_query.sql",
+    "newSqlFilePath": "C:\\sql\\new_query.sql",
+    "sqlProvider": "SqlServer",
+    "sqlConnection": {
+        "host": "localhost",
+        "port": 1433,
+        "database": "TestDB",
+        "username": "sa",
+        "password": "TestPassword123"
+    }
+}
