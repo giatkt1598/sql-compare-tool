@@ -166,9 +166,9 @@ function SqlParametersPage() {
           <Button
             startIcon={<ArrowBackOutlinedIcon />}
             variant="outlined"
-            onClick={() => navigate('/profiles')}
+            onClick={() => navigate(-1)}
           >
-            Back to Profiles
+            Back
           </Button>
           <Button
             startIcon={<SaveOutlinedIcon />}
@@ -252,8 +252,8 @@ function SqlParametersPage() {
                           value={row.dataType}
                           onChange={(event) =>
                             handleUpdateRow(rowIndex, {
-                              dataType:
-                                event.target.value as SqlParameterArrayItemInput['dataType'],
+                              dataType: event.target
+                                .value as SqlParameterArrayItemInput['dataType'],
                             })
                           }
                         >

@@ -78,6 +78,7 @@ function ProfilesPage() {
       ) : (
         <ProfilesTable
           profiles={profiles}
+          onOpenTestCases={(profile) => navigate(`/profiles/${profile.id}/test-cases`)}
           onEdit={(profile) => navigate(`/profiles/${profile.id}`)}
           onParameters={(profile) => navigate(`/profiles/${profile.id}/parameters`)}
           onDelete={handleDeleteProfile}

@@ -5,6 +5,7 @@ import swaggerSpec from './config/swagger';
 import profileRoutes from './routes/profileRoutes';
 import sqlRoutes from './routes/sqlRoutes';
 import sqlParameterRoutes from './routes/sqlParameterRoutes';
+import testCaseRoutes from './routes/testCaseRoutes';
 import errorHandler from './middleware/errorHandler';
 
 const app = express();
@@ -41,6 +42,7 @@ app.get('/', (_req: Request, res: Response) => {
 app.use('/api/profiles', profileRoutes);
 app.use('/api/sql', sqlRoutes);
 app.use('/api/sql-parameters', sqlParameterRoutes);
+app.use('/api/test-cases', testCaseRoutes);
 
 app.use(errorHandler);
 

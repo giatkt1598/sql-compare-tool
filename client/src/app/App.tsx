@@ -3,6 +3,8 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import ProfilesPage from '../pages/ProfilesPage';
 import ProfileUpsertPage from '../pages/ProfileUpsertPage';
 import SqlParametersPage from '../pages/SqlParametersPage';
+import TestCaseUpsertPage from '../pages/TestCaseUpsertPage';
+import TestCasesPage from '../pages/TestCasesPage';
 
 function App() {
   return (
@@ -22,6 +24,12 @@ function App() {
           <Route path="/profiles/new" element={<ProfileUpsertPage />} />
           <Route path="/profiles/:id" element={<ProfileUpsertPage />} />
           <Route path="/profiles/:profileId/parameters" element={<SqlParametersPage />} />
+          <Route path="/profiles/:profileId/test-cases" element={<TestCasesPage />} />
+          <Route path="/profiles/:profileId/test-cases/new" element={<TestCaseUpsertPage />} />
+          <Route
+            path="/profiles/:profileId/test-cases/:testCaseId"
+            element={<TestCaseUpsertPage />}
+          />
         </Routes>
       </Container>
     </Box>

@@ -17,13 +17,14 @@ import type { Profile } from '../../models/profile';
 
 interface ProfilesTableProps {
   profiles: Profile[];
+  onOpenTestCases: (profile: Profile) => void;
   onEdit: (profile: Profile) => void;
   onDelete: (profile: Profile) => void;
   onParameters: (profile: Profile) => void;
 }
 
 function ProfilesTable(props: ProfilesTableProps) {
-  const { profiles, onEdit, onDelete, onParameters } = props;
+  const { profiles, onOpenTestCases, onEdit, onDelete, onParameters } = props;
 
   if (profiles.length === 0) {
     return (
@@ -49,7 +50,12 @@ function ProfilesTable(props: ProfilesTableProps) {
         </TableHead>
         <TableBody>
           {profiles.map((profile) => (
-            <TableRow key={profile.id} hover>
+            <TableRow
+              key={profile.id}
+              hover
+              onClick={() => onOpenTestCases(profile)}
+              sx={{ cursor: 'pointer' }}
+            >
               <TableCell>
                 <Typography variant="subtitle2">{profile.name}</Typography>
                 <Typography variant="caption" color="text.secondary">
@@ -61,17 +67,35 @@ function ProfilesTable(props: ProfilesTableProps) {
               <TableCell>{new Date(profile.updatedAt).toLocaleString()}</TableCell>
               <TableCell align="right">
                 <Tooltip title="Edit">
-                  <IconButton onClick={() => onEdit(profile)} color="primary">
+                  <IconButton
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onEdit(profile);
+                    }}
+                    color="primary"
+                  >
                     <EditOutlinedIcon />
                   </IconButton>
                 </Tooltip>
                 <Tooltip title="Parameters">
-                  <IconButton onClick={() => onParameters(profile)} color="secondary">
+                  <IconButton
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onParameters(profile);
+                    }}
+                    color="secondary"
+                  >
                     <TuneOutlinedIcon />
                   </IconButton>
                 </Tooltip>
                 <Tooltip title="Delete">
-                  <IconButton onClick={() => onDelete(profile)} color="error">
+                  <IconButton
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onDelete(profile);
+                    }}
+                    color="error"
+                  >
                     <DeleteOutlineOutlinedIcon />
                   </IconButton>
                 </Tooltip>
