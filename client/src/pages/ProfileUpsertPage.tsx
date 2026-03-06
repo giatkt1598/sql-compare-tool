@@ -24,6 +24,7 @@ function ProfileUpsertPage() {
   const [isLoading, setIsLoading] = useState<boolean>(isEditMode);
   const [isSaving, setIsSaving] = useState(false);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
+  const [isConnectionSuccess, setIsConnectionSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastState>({
     open: false,
@@ -36,6 +37,7 @@ function ProfileUpsertPage() {
       setFormValue(defaultProfileFormInput);
       setIsLoading(false);
       setErrorMessage(null);
+      setIsConnectionSuccess(false);
       setToast({ open: false, message: '', severity: 'success' });
       return;
     }
@@ -76,17 +78,20 @@ function ProfileUpsertPage() {
   const handleTestConnection = async () => {
     setIsTestingConnection(true);
     setErrorMessage(null);
+    setIsConnectionSuccess(false);
     try {
       const result = await sqlApi.testConnection({
         sqlProvider: formValue.sqlProvider,
         sqlConnection: formValue.sqlConnection,
       });
+      setIsConnectionSuccess(true);
       setToast({
         open: true,
         message: result.message || 'Connection successful',
         severity: 'success',
       });
     } catch (error) {
+      setIsConnectionSuccess(false);
       setToast({
         open: true,
         message: error instanceof Error ? error.message : 'Test connection failed',
@@ -105,6 +110,11 @@ function ProfileUpsertPage() {
     );
   }
 
+  const handleFormChange = (value: ProfileFormInput) => {
+    setIsConnectionSuccess(false);
+    setFormValue(value);
+  };
+
   return (
     <Stack
       spacing={2}
@@ -119,7 +129,8 @@ function ProfileUpsertPage() {
         loading={isSaving}
         testingConnection={isTestingConnection}
         canTestConnection
-        onChange={setFormValue}
+        testConnectionSuccess={isConnectionSuccess}
+        onChange={handleFormChange}
         onSubmit={handleSubmit}
         onTestConnection={handleTestConnection}
         onCancel={() => navigate('/profiles')}

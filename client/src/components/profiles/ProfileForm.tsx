@@ -10,6 +10,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
+import CheckIcon from '@mui/icons-material/Check';
 import { useEffect, useRef, type ChangeEvent, type ReactElement, type SyntheticEvent } from 'react';
 import {
   getDefaultConnection,
@@ -27,6 +28,7 @@ interface ProfileFormProps {
   loading: boolean;
   testingConnection?: boolean;
   canTestConnection?: boolean;
+  testConnectionSuccess?: boolean;
   onChange: (value: ProfileFormInput) => void;
   onSubmit: () => Promise<void>;
   onTestConnection?: () => Promise<void>;
@@ -49,6 +51,7 @@ function ProfileForm(props: ProfileFormProps) {
     loading,
     testingConnection = false,
     canTestConnection = false,
+    testConnectionSuccess = false,
     onChange,
     onSubmit,
     onTestConnection,
@@ -245,6 +248,12 @@ function ProfileForm(props: ProfileFormProps) {
               </Button>
             </span>
           </Tooltip>
+          {testConnectionSuccess ? (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <CheckIcon color="success" />
+              <span style={{ color: 'green' }}>Connection success!</span>
+            </Box>
+          ) : null}
           <Box sx={{ flexGrow: 1 }} />
           <Button onClick={onCancel} disabled={loading}>
             Cancel
