@@ -1,95 +1,158 @@
-import { Alert, CircularProgress, Snackbar, Stack } from '@mui/material'
-import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
-import { profileApi } from '../apis/profileApi'
-import ProfileForm from '../components/profiles/ProfileForm'
+import { Alert, CircularProgress, Snackbar, Stack } from "@mui/material";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { profileApi } from "../apis/profileApi";
+import ProfileForm from "../components/profiles/ProfileForm";
 import {
   defaultProfileFormInput,
   toProfileFormInput,
   type ProfileFormInput,
-} from '../models/profile'
+} from "../models/profile";
+
+interface ToastState {
+  open: boolean;
+  message: string;
+  severity: "success" | "error";
+}
 
 function ProfileUpsertPage() {
-  const navigate = useNavigate()
-  const { id } = useParams<{ id?: string }>()
-  const isEditMode = useMemo(() => Boolean(id), [id])
-  const [formValue, setFormValue] = useState<ProfileFormInput>(defaultProfileFormInput)
-  const [isLoading, setIsLoading] = useState<boolean>(isEditMode)
-  const [isSaving, setIsSaving] = useState(false)
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const navigate = useNavigate();
+  const { id } = useParams<{ id?: string }>();
+  const isEditMode = useMemo(() => Boolean(id), [id]);
+  const [formValue, setFormValue] = useState<ProfileFormInput>(
+    defaultProfileFormInput,
+  );
+  const [isLoading, setIsLoading] = useState<boolean>(isEditMode);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isTestingConnection, setIsTestingConnection] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [toast, setToast] = useState<ToastState>({
+    open: false,
+    message: "",
+    severity: "success",
+  });
 
   useEffect(() => {
     if (!isEditMode || !id) {
-      setFormValue(defaultProfileFormInput)
-      setIsLoading(false)
-      setErrorMessage(null)
-      return
+      setFormValue(defaultProfileFormInput);
+      setIsLoading(false);
+      setErrorMessage(null);
+      setToast({ open: false, message: "", severity: "success" });
+      return;
     }
 
     const loadProfile = async () => {
-      setIsLoading(true)
-      setErrorMessage(null)
+      setIsLoading(true);
+      setErrorMessage(null);
       try {
-        const profile = await profileApi.getById(id)
-        setFormValue(toProfileFormInput(profile))
+        const profile = await profileApi.getById(id);
+        setFormValue(toProfileFormInput(profile));
       } catch (error) {
-        setErrorMessage(error instanceof Error ? error.message : 'Load profile failed')
+        setErrorMessage(
+          error instanceof Error ? error.message : "Load profile failed",
+        );
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
-    }
+    };
 
-    void loadProfile()
-  }, [id, isEditMode])
+    void loadProfile();
+  }, [id, isEditMode]);
 
   const handleSubmit = async () => {
-    setIsSaving(true)
-    setErrorMessage(null)
+    setIsSaving(true);
+    setErrorMessage(null);
     try {
       if (isEditMode && id) {
-        await profileApi.update(id, formValue)
+        await profileApi.update(id, formValue);
       } else {
-        await profileApi.create(formValue)
+        await profileApi.create(formValue);
       }
-      navigate('/profiles')
+      navigate("/profiles");
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Save profile failed')
+      setErrorMessage(
+        error instanceof Error ? error.message : "Save profile failed",
+      );
     } finally {
-      setIsSaving(false)
+      setIsSaving(false);
     }
-  }
+  };
+
+  const handleTestConnection = async () => {
+    setIsTestingConnection(true);
+    setErrorMessage(null);
+    try {
+      const result = await profileApi.testConnectionDirect({
+        sqlProvider: formValue.sqlProvider,
+        sqlConnection: formValue.sqlConnection,
+      });
+      setToast({
+        open: true,
+        message: result.message || "Connection successful",
+        severity: "success",
+      });
+    } catch (error) {
+      setToast({
+        open: true,
+        message:
+          error instanceof Error ? error.message : "Test connection failed",
+        severity: "error",
+      });
+    } finally {
+      setIsTestingConnection(false);
+    }
+  };
 
   if (isLoading) {
     return (
       <Stack alignItems="center" py={10}>
         <CircularProgress />
       </Stack>
-    )
+    );
   }
 
   return (
-    <Stack spacing={2}>
+    <Stack
+      spacing={2}
+      sx={{
+        minHeight: "calc(100vh - 160px)",
+        alignItems: "center",
+      }}
+    >
       <ProfileForm
-        mode={isEditMode ? 'edit' : 'create'}
+        mode={isEditMode ? "edit" : "create"}
         formValue={formValue}
         loading={isSaving}
+        testingConnection={isTestingConnection}
+        canTestConnection
         onChange={setFormValue}
         onSubmit={handleSubmit}
-        onCancel={() => navigate('/profiles')}
+        onTestConnection={handleTestConnection}
+        onCancel={() => navigate("/profiles")}
       />
 
       <Snackbar
-        open={Boolean(errorMessage)}
+        open={Boolean(errorMessage) || toast.open}
         autoHideDuration={3500}
-        onClose={() => setErrorMessage(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        onClose={() => {
+          setErrorMessage(null);
+          setToast((current) => ({ ...current, open: false }));
+        }}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
       >
-        <Alert severity="error" onClose={() => setErrorMessage(null)} variant="filled">
-          {errorMessage}
+        <Alert
+          severity={errorMessage ? "error" : toast.severity}
+          onClose={() => {
+            setErrorMessage(null);
+            setToast((current) => ({ ...current, open: false }));
+          }}
+          variant="filled"
+        >
+          {errorMessage ?? toast.message}
         </Alert>
       </Snackbar>
     </Stack>
-  )
+  );
 }
 
-export default ProfileUpsertPage
+export default ProfileUpsertPage;

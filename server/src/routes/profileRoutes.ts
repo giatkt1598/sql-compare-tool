@@ -130,6 +130,7 @@ router.get('/search/:keyword', ProfileController.searchProfiles.bind(ProfileCont
  */
 router.get('/recent', ProfileController.getRecentProfiles.bind(ProfileController));
 router.get('/recent/:limit', ProfileController.getRecentProfiles.bind(ProfileController));
+router.post('/test-connection', ProfileController.testConnectionDirect.bind(ProfileController));
 
 // ===================== STANDARD CRUD ROUTES =====================
 
@@ -294,45 +295,6 @@ router.put('/:id', ProfileController.updateProfile.bind(ProfileController));
  *         description: Profile khong tim thay
  */
 router.delete('/:id', ProfileController.deleteProfile.bind(ProfileController));
-
-/**
- * @swagger
- * /api/profiles/{id}/test-connection:
- *   post:
- *     summary: Kiem tra ket noi database
- *     description: Test the database connection for a specific profile
- *     tags:
- *       - Profiles - CRUD
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: ID cua profile
- *     responses:
- *       200:
- *         description: Connection test completed
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 data:
- *                   type: object
- *                   properties:
- *                     success:
- *                       type: boolean
- *                     message:
- *                       type: string
- *                 message:
- *                   type: string
- *       400:
- *         description: Connection failed
- */
-router.post('/:id/test-connection', ProfileController.testConnection.bind(ProfileController));
 
 // ===================== SWAGGER SCHEMAS =====================
 

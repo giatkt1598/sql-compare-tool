@@ -37,4 +37,12 @@ export const profileApi = {
     request<{ message: string; id: string }>(`${API_PROFILE_URL}/${id}`, {
       method: 'DELETE',
     }),
+  testConnectionDirect: (payload: Pick<ProfileFormInput, 'sqlProvider' | 'sqlConnection'>) =>
+    request<{ success: boolean; message: string; timestamp: string }>(
+      `${API_PROFILE_URL}/test-connection`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+    ),
 }

@@ -112,12 +112,28 @@ class ProfileController {
     }
   }
 
-  async testConnection(req: Request, res: Response): Promise<void> {
+  async testConnectionDirect(req: Request, res: Response): Promise<void> {
     try {
-      const id = String(req.params.id);
-      const profile = ProfileService.getProfileById(id);
+      const sqlProvider = req.body?.sqlProvider as SqlProvider | undefined;
+      const sqlConnection = req.body?.sqlConnection;
 
-      const result = await ProfileService.testConnection(profile.sqlProvider, profile.sqlConnection);
+      if (!sqlProvider || !['SqlServer', 'Postgres'].includes(sqlProvider)) {
+        res.status(400).json({
+          success: false,
+          message: 'SQL Provider must be either SqlServer or Postgres'
+        });
+        return;
+      }
+
+      if (!sqlConnection || typeof sqlConnection !== 'object') {
+        res.status(400).json({
+          success: false,
+          message: 'Database connection details are required'
+        });
+        return;
+      }
+
+      const result = await ProfileService.testConnection(sqlProvider, sqlConnection);
       res.status(200).json(result);
     } catch (error) {
       res.status(400).json({
