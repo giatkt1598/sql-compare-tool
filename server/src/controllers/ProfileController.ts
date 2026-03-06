@@ -6,11 +6,7 @@ class ProfileController {
   getAllProfiles(_req: Request, res: Response): void {
     try {
       const profiles = ProfileService.getAllProfiles();
-      res.status(200).json({
-        success: true,
-        data: profiles,
-        message: 'Profiles retrieved successfully'
-      });
+      res.status(200).json(profiles);
     } catch (error) {
       res.status(500).json({
         success: false,
@@ -23,11 +19,7 @@ class ProfileController {
     try {
       const id = String(req.params.id);
       const profile = ProfileService.getProfileById(id);
-      res.status(200).json({
-        success: true,
-        data: profile,
-        message: 'Profile retrieved successfully'
-      });
+      res.status(200).json(profile);
     } catch (error) {
       res.status(404).json({
         success: false,
@@ -72,11 +64,7 @@ class ProfileController {
       }
 
       const newProfile = ProfileService.createProfile(profileData as CreateProfileInput);
-      res.status(201).json({
-        success: true,
-        data: newProfile,
-        message: 'Profile created successfully'
-      });
+      res.status(201).json(newProfile);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unexpected error';
       const statusCode = message.includes('already exists') ? 409 : 400;
@@ -98,11 +86,7 @@ class ProfileController {
       }
 
       const updatedProfile = ProfileService.updateProfile(id, profileData);
-      res.status(200).json({
-        success: true,
-        data: updatedProfile,
-        message: 'Profile updated successfully'
-      });
+      res.status(200).json(updatedProfile);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unexpected error';
       const statusCode = message.includes('not found') ? 404 : 400;
@@ -117,11 +101,7 @@ class ProfileController {
     try {
       const id = String(req.params.id);
       const result = ProfileService.deleteProfile(id);
-      res.status(200).json({
-        success: true,
-        data: result,
-        message: 'Profile deleted successfully'
-      });
+      res.status(200).json(result);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unexpected error';
       const statusCode = message.includes('not found') ? 404 : 400;
@@ -138,12 +118,7 @@ class ProfileController {
       const profile = ProfileService.getProfileById(id);
 
       const result = await ProfileService.testConnection(profile.sqlProvider, profile.sqlConnection);
-
-      res.status(200).json({
-        success: true,
-        data: result,
-        message: 'Connection test completed'
-      });
+      res.status(200).json(result);
     } catch (error) {
       res.status(400).json({
         success: false,
@@ -165,11 +140,7 @@ class ProfileController {
       }
 
       const profiles = ProfileService.getProfilesByProvider(provider);
-      res.status(200).json({
-        success: true,
-        data: profiles,
-        message: `Profiles for provider ${provider} retrieved successfully`
-      });
+      res.status(200).json(profiles);
     } catch (error) {
       res.status(500).json({
         success: false,
@@ -191,11 +162,7 @@ class ProfileController {
       }
 
       const profiles = ProfileService.searchProfiles(keyword);
-      res.status(200).json({
-        success: true,
-        data: profiles,
-        message: `Found ${profiles.length} profiles matching keyword`
-      });
+      res.status(200).json(profiles);
     } catch (error) {
       res.status(500).json({
         success: false,
@@ -218,11 +185,7 @@ class ProfileController {
       }
 
       const profiles = ProfileService.getRecentProfiles(limit);
-      res.status(200).json({
-        success: true,
-        data: profiles,
-        message: `Retrieved ${profiles.length} recent profiles`
-      });
+      res.status(200).json(profiles);
     } catch (error) {
       res.status(500).json({
         success: false,
@@ -234,11 +197,7 @@ class ProfileController {
   getStatistics(_req: Request, res: Response): void {
     try {
       const stats = ProfileService.getStatistics();
-      res.status(200).json({
-        success: true,
-        data: stats,
-        message: 'Statistics retrieved successfully'
-      });
+      res.status(200).json(stats);
     } catch (error) {
       res.status(500).json({
         success: false,
