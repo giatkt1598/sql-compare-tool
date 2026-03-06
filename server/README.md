@@ -1,6 +1,6 @@
 # SQL Comparer - Server Backend
 
-Một backend API được xây dựng bằng Express.js với cấu trúc kiến trúc tương tự ASP.NET (Repository, Service, Controller pattern).
+Một backend API được xây dựng bằng Express + TypeScript với cấu trúc kiến trúc tương tự ASP.NET (Repository, Service, Controller pattern).
 
 ## 📁 Cấu trúc Project
 
@@ -8,27 +8,27 @@ Một backend API được xây dựng bằng Express.js với cấu trúc kiế
 server/
 ├── src/
 │   ├── models/              # Models (Entities)
-│   │   └── Profile.js       # Profile model với validation
+│   │   └── Profile.ts       # Profile model với validation
 │   │
 │   ├── repositories/        # Repository Layer
-│   │   └── ProfileRepository.js  # Xử lý dữ liệu từ file JSON
+│   │   └── ProfileRepository.ts  # Xử lý dữ liệu từ file JSON
 │   │
 │   ├── services/            # Business Logic Layer
-│   │   └── ProfileService.js    # Services cho Profile
+│   │   └── ProfileService.ts    # Services cho Profile
 │   │
 │   ├── controllers/         # Controllers
-│   │   └── ProfileController.js  # HTTP handlers
+│   │   └── ProfileController.ts  # HTTP handlers
 │   │
 │   ├── routes/              # Routes
-│   │   └── profileRoutes.js # Profile route definitions
+│   │   └── profileRoutes.ts # Profile route definitions
 │   │
 │   ├── middleware/          # Middleware
-│   │   └── errorHandler.js  # Error handling middleware
+│   │   └── errorHandler.ts  # Error handling middleware
 │   │
 │   ├── config/              # Configuration
-│   │   └── fileConstants.js # File path constants
+│   │   └── fileConstants.ts # File path constants
 │   │
-│   └── index.js             # Main server file
+│   └── index.ts             # Main server source
 │
 ├── data/                    # JSON Data Storage
 │   └── profiles.json        # Profiles storage
@@ -72,7 +72,7 @@ Data Store (JSON files)
 
 ## 🚀 Cách chạy
 
-### Development (với hot reload)
+### Development (hot reload)
 
 ```bash
 npm run dev
@@ -80,9 +80,10 @@ npm run dev
 
 Server sẽ chạy tại `http://localhost:5000`
 
-### Production
+### Build + Production
 
 ```bash
+npm run build
 npm start
 ```
 
@@ -185,11 +186,13 @@ curl -X DELETE http://localhost:5000/api/profiles/profile-1709782400000-abc12345
 
 ## 🛠️ Technologies
 
-- **Framework**: Express.js
+- **Framework**: Express
+- **Language**: TypeScript
 - **Runtime**: Node.js
 - **Storage**: JSON files (no database)
 - **CORS**: Enabled for frontend communication
-- **Hot Reload**: Nodemon (development)
+- **Dev Runtime**: `tsx`
+- **Build Tool**: `tsup`
 
 ## 📚 Key Features
 

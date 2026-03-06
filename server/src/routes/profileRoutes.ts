@@ -1,13 +1,5 @@
-/**
- * Profile Routes
- * Định nghĩa tất cả các route cho Profile endpoints
- * 
- * IMPORTANT: Specific routes MUST come before generic routes
- * Example: /api/profiles/statistics BEFORE /api/profiles/:id
- */
-
-const express = require('express');
-const profileController = require('../controllers/ProfileController');
+import express from 'express';
+import ProfileController from '../controllers/ProfileController';
 
 const router = express.Router();
 
@@ -17,13 +9,13 @@ const router = express.Router();
  * @swagger
  * /api/profiles/statistics:
  *   get:
- *     summary: Lấy thống kê profiles
+ *     summary: Lay thong ke profiles
  *     description: Get statistics about profiles
  *     tags:
  *       - Profiles - Special
  *     responses:
  *       200:
- *         description: Thống kê profiles
+ *         description: Thong ke profiles
  *         content:
  *           application/json:
  *             schema:
@@ -45,13 +37,13 @@ const router = express.Router();
  *                       items:
  *                         type: string
  */
-router.get('/statistics', profileController.getStatistics.bind(profileController));
+router.get('/statistics', ProfileController.getStatistics.bind(ProfileController));
 
 /**
  * @swagger
  * /api/profiles/provider/{provider}:
  *   get:
- *     summary: Lấy profiles theo SQL provider
+ *     summary: Lay profiles theo SQL provider
  *     description: Get all profiles for a specific SQL provider
  *     tags:
  *       - Profiles - Special
@@ -67,7 +59,7 @@ router.get('/statistics', profileController.getStatistics.bind(profileController
  *         description: SQL provider type
  *     responses:
  *       200:
- *         description: Danh sách profiles được lấy thành công
+ *         description: Danh sach profiles duoc lay thanh cong
  *         content:
  *           application/json:
  *             schema:
@@ -82,13 +74,13 @@ router.get('/statistics', profileController.getStatistics.bind(profileController
  *       400:
  *         description: Invalid provider
  */
-router.get('/provider/:provider', profileController.getByProvider.bind(profileController));
+router.get('/provider/:provider', ProfileController.getByProvider.bind(ProfileController));
 
 /**
  * @swagger
  * /api/profiles/search/{keyword}:
  *   get:
- *     summary: Tìm kiếm profiles
+ *     summary: Tim kiem profiles
  *     description: Search profiles by description keyword
  *     tags:
  *       - Profiles - Special
@@ -98,10 +90,10 @@ router.get('/provider/:provider', profileController.getByProvider.bind(profileCo
  *         required: true
  *         schema:
  *           type: string
- *         description: Từ khóa tìm kiếm
+ *         description: Tu khoa tim kiem
  *     responses:
  *       200:
- *         description: Danh sách profiles tìm thấy
+ *         description: Danh sach profiles tim thay
  *         content:
  *           application/json:
  *             schema:
@@ -114,13 +106,13 @@ router.get('/provider/:provider', profileController.getByProvider.bind(profileCo
  *                   items:
  *                     $ref: '#/components/schemas/Profile'
  */
-router.get('/search/:keyword', profileController.searchProfiles.bind(profileController));
+router.get('/search/:keyword', ProfileController.searchProfiles.bind(ProfileController));
 
 /**
  * @swagger
  * /api/profiles/recent/{limit}:
  *   get:
- *     summary: Lấy profiles gần đây
+ *     summary: Lay profiles gan day
  *     description: Get recently created profiles
  *     tags:
  *       - Profiles - Special
@@ -131,12 +123,13 @@ router.get('/search/:keyword', profileController.searchProfiles.bind(profileCont
  *         schema:
  *           type: integer
  *           default: 10
- *         description: Số lượng profiles tối đa (1-100)
+ *         description: So luong profiles toi da (1-100)
  *     responses:
  *       200:
- *         description: Danh sách profiles gần đây
+ *         description: Danh sach profiles gan day
  */
-router.get('/recent/:limit?', profileController.getRecentProfiles.bind(profileController));
+router.get('/recent', ProfileController.getRecentProfiles.bind(ProfileController));
+router.get('/recent/:limit', ProfileController.getRecentProfiles.bind(ProfileController));
 
 // ===================== STANDARD CRUD ROUTES =====================
 
@@ -144,13 +137,13 @@ router.get('/recent/:limit?', profileController.getRecentProfiles.bind(profileCo
  * @swagger
  * /api/profiles:
  *   get:
- *     summary: Lấy danh sách tất cả profiles
+ *     summary: Lay danh sach tat ca profiles
  *     description: Retrieve all profiles stored in the system
  *     tags:
  *       - Profiles - CRUD
  *     responses:
  *       200:
- *         description: Danh sách profiles được lấy thành công
+ *         description: Danh sach profiles duoc lay thanh cong
  *         content:
  *           application/json:
  *             schema:
@@ -166,15 +159,15 @@ router.get('/recent/:limit?', profileController.getRecentProfiles.bind(profileCo
  *                 message:
  *                   type: string
  *       500:
- *         description: Lỗi server
+ *         description: Loi server
  */
-router.get('/', profileController.getAllProfiles.bind(profileController));
+router.get('/', ProfileController.getAllProfiles.bind(ProfileController));
 
 /**
  * @swagger
  * /api/profiles:
  *   post:
- *     summary: Tạo profile mới
+ *     summary: Tao profile moi
  *     description: Create a new profile with SQL provider and connection details
  *     tags:
  *       - Profiles - CRUD
@@ -186,7 +179,7 @@ router.get('/', profileController.getAllProfiles.bind(profileController));
  *             $ref: '#/components/schemas/CreateProfileRequest'
  *     responses:
  *       201:
- *         description: Profile được tạo thành công
+ *         description: Profile duoc tao thanh cong
  *         content:
  *           application/json:
  *             schema:
@@ -203,13 +196,13 @@ router.get('/', profileController.getAllProfiles.bind(profileController));
  *       409:
  *         description: Profile name already exists
  */
-router.post('/', profileController.createProfile.bind(profileController));
+router.post('/', ProfileController.createProfile.bind(ProfileController));
 
 /**
  * @swagger
  * /api/profiles/{id}:
  *   get:
- *     summary: Lấy profile theo ID
+ *     summary: Lay profile theo ID
  *     description: Retrieve a specific profile by its ID
  *     tags:
  *       - Profiles - CRUD
@@ -219,10 +212,10 @@ router.post('/', profileController.createProfile.bind(profileController));
  *         required: true
  *         schema:
  *           type: string
- *         description: ID của profile
+ *         description: ID cua profile
  *     responses:
  *       200:
- *         description: Profile được lấy thành công
+ *         description: Profile duoc lay thanh cong
  *         content:
  *           application/json:
  *             schema:
@@ -235,15 +228,15 @@ router.post('/', profileController.createProfile.bind(profileController));
  *                 message:
  *                   type: string
  *       404:
- *         description: Profile không tìm thấy
+ *         description: Profile khong tim thay
  */
-router.get('/:id', profileController.getProfileById.bind(profileController));
+router.get('/:id', ProfileController.getProfileById.bind(ProfileController));
 
 /**
  * @swagger
  * /api/profiles/{id}:
  *   put:
- *     summary: Cập nhật profile
+ *     summary: Cap nhat profile
  *     description: Update an existing profile
  *     tags:
  *       - Profiles - CRUD
@@ -253,7 +246,7 @@ router.get('/:id', profileController.getProfileById.bind(profileController));
  *         required: true
  *         schema:
  *           type: string
- *         description: ID của profile
+ *         description: ID cua profile
  *     requestBody:
  *       required: true
  *       content:
@@ -262,7 +255,7 @@ router.get('/:id', profileController.getProfileById.bind(profileController));
  *             $ref: '#/components/schemas/UpdateProfileRequest'
  *     responses:
  *       200:
- *         description: Profile được cập nhật thành công
+ *         description: Profile duoc cap nhat thanh cong
  *         content:
  *           application/json:
  *             schema:
@@ -275,15 +268,15 @@ router.get('/:id', profileController.getProfileById.bind(profileController));
  *                 message:
  *                   type: string
  *       404:
- *         description: Profile không tìm thấy
+ *         description: Profile khong tim thay
  */
-router.put('/:id', profileController.updateProfile.bind(profileController));
+router.put('/:id', ProfileController.updateProfile.bind(ProfileController));
 
 /**
  * @swagger
  * /api/profiles/{id}:
  *   delete:
- *     summary: Xóa profile
+ *     summary: Xoa profile
  *     description: Delete a profile by its ID
  *     tags:
  *       - Profiles - CRUD
@@ -293,20 +286,20 @@ router.put('/:id', profileController.updateProfile.bind(profileController));
  *         required: true
  *         schema:
  *           type: string
- *         description: ID của profile
+ *         description: ID cua profile
  *     responses:
  *       200:
- *         description: Profile được xóa thành công
+ *         description: Profile duoc xoa thanh cong
  *       404:
- *         description: Profile không tìm thấy
+ *         description: Profile khong tim thay
  */
-router.delete('/:id', profileController.deleteProfile.bind(profileController));
+router.delete('/:id', ProfileController.deleteProfile.bind(ProfileController));
 
 /**
  * @swagger
  * /api/profiles/{id}/test-connection:
  *   post:
- *     summary: Kiểm tra kết nối database
+ *     summary: Kiem tra ket noi database
  *     description: Test the database connection for a specific profile
  *     tags:
  *       - Profiles - CRUD
@@ -316,7 +309,7 @@ router.delete('/:id', profileController.deleteProfile.bind(profileController));
  *         required: true
  *         schema:
  *           type: string
- *         description: ID của profile
+ *         description: ID cua profile
  *     responses:
  *       200:
  *         description: Connection test completed
@@ -339,7 +332,7 @@ router.delete('/:id', profileController.deleteProfile.bind(profileController));
  *       400:
  *         description: Connection failed
  */
-router.post('/:id/test-connection', profileController.testConnection.bind(profileController));
+router.post('/:id/test-connection', ProfileController.testConnection.bind(ProfileController));
 
 // ===================== SWAGGER SCHEMAS =====================
 
@@ -488,4 +481,4 @@ router.post('/:id/test-connection', profileController.testConnection.bind(profil
  *               type: string
  */
 
-module.exports = router;
+export default router;
