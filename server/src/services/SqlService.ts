@@ -194,9 +194,7 @@ class SqlService {
       }
       return parsed as Record<string, unknown>;
     } catch (error) {
-      throw new Error(
-        `Invalid testCase parameter JSON: ${error instanceof Error ? error.message : String(error)}`
-      );
+      throw new Error(`Invalid testCase parameter JSON`, { cause: error });
     }
   }
 
@@ -262,7 +260,7 @@ class SqlService {
     sqlProvider: SqlProvider,
     connection: ProfileData['sqlConnection'],
     queryText: string,
-    sqlParameters: Array<Pick<SqlParameterData, 'name' | 'index'>>,
+    sqlParameters: Array<Pick<SqlParameterData, 'name' | 'index' | 'dataType'>>,
     boundParams: Record<string, unknown>
   ): Promise<QueryRows> {
     if (sqlProvider === 'SqlServer') {
@@ -306,7 +304,7 @@ class SqlService {
   private async executeSqlServerQuery(
     connection: ProfileData['sqlConnection'],
     queryText: string,
-    sqlParameters: Array<Pick<SqlParameterData, 'name' | 'index'>>,
+    sqlParameters: Array<Pick<SqlParameterData, 'name' | 'index' | 'dataType'>>,
     boundParams: Record<string, unknown>
   ): Promise<QueryRows> {
     const normalizedQueryText = this.normalizeSqlServerQuery(queryText, sqlParameters);
@@ -332,7 +330,7 @@ class SqlService {
     try {
       await pool.connect();
       const request = pool.request();
-      for (const parameter of sqlParameters.sort((a, b) => a.index - b.index)) {
+      for (const parameter of [...sqlParameters].sort((a, b) => a.index - b.index)) {
         request.input(parameter.name, boundParams[parameter.name] ?? null);
       }
       const result = await request.query(normalizedQueryText);
@@ -344,7 +342,7 @@ class SqlService {
 
   private normalizeSqlServerQuery(
     queryText: string,
-    sqlParameters: Array<Pick<SqlParameterData, 'name'>>
+    sqlParameters: Array<Pick<SqlParameterData, 'name' | 'dataType'>>
   ): string {
     let normalized = queryText;
     for (const parameter of sqlParameters) {
@@ -391,7 +389,7 @@ class SqlService {
   private async executePostgresQuery(
     connection: ProfileData['sqlConnection'],
     queryText: string,
-    sqlParameters: Array<Pick<SqlParameterData, 'name' | 'index'>>,
+    sqlParameters: Array<Pick<SqlParameterData, 'name' | 'index' | 'dataType'>>,
     boundParams: Record<string, unknown>
   ): Promise<QueryRows> {
     const pgConfig = this.buildPostgresConfig(connection, 60000);
@@ -436,7 +434,7 @@ class SqlService {
 
   private preparePostgresQuery(
     queryText: string,
-    sqlParameters: Array<Pick<SqlParameterData, 'name' | 'index'>>,
+    sqlParameters: Array<Pick<SqlParameterData, 'name' | 'index' | 'dataType'>>,
     boundParams: Record<string, unknown>
   ): { text: string; values: unknown[] } {
     let preparedText = queryText;
@@ -461,17 +459,15 @@ class SqlService {
       }
 
       const placeholderIndex = placeholderIndexByName.get(parameter.name) as number;
-      preparedText = preparedText.replace(
-        new RegExp(`@${escapedName}\\b`, 'g'),
-        `$${placeholderIndex}`
+      const typedPlaceholder = this.buildPostgresTypedPlaceholder(
+        placeholderIndex,
+        parameter.dataType
       );
-      preparedText = preparedText.replace(
-        new RegExp(`:${escapedName}\\b`, 'g'),
-        `$${placeholderIndex}`
-      );
+      preparedText = preparedText.replace(new RegExp(`@${escapedName}\\b`, 'g'), typedPlaceholder);
+      preparedText = preparedText.replace(new RegExp(`:${escapedName}\\b`, 'g'), typedPlaceholder);
       preparedText = preparedText.replace(
         new RegExp(`\\{\\{\\s*${escapedName}\\s*\\}\\}`, 'g'),
-        `$${placeholderIndex}`
+        typedPlaceholder
       );
     }
 
@@ -484,7 +480,35 @@ class SqlService {
       }
     }
 
+    preparedText = preparedText.replace(/\s+/g, ' ').trim();
+
     return { text: preparedText, values };
+  }
+
+  private buildPostgresTypedPlaceholder(
+    placeholderIndex: number,
+    dataType: SqlParameterDataType
+  ): string {
+    const base = `$${placeholderIndex}`;
+    if (dataType === 'number') {
+      return `${base}::numeric`;
+    }
+    if (dataType === 'boolean') {
+      return `${base}::boolean`;
+    }
+    if (dataType === 'date') {
+      return `${base}::date`;
+    }
+    if (dataType === 'datetime') {
+      return `${base}::timestamptz`;
+    }
+    if (dataType === 'json') {
+      return `${base}::jsonb`;
+    }
+    if (dataType === 'uuid') {
+      return `${base}::uuid`;
+    }
+    return `${base}::text`;
   }
 
   private escapeRegex(value: string): string {
