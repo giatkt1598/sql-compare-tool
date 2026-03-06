@@ -1,4 +1,14 @@
-import { Box, MenuItem, Stack, TextField } from "@mui/material";
+import {
+  Box,
+  IconButton,
+  InputAdornment,
+  MenuItem,
+  Stack,
+  TextField,
+} from "@mui/material";
+import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
+import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
+import { useState } from "react";
 import type { PostgresSslMode } from "../../../models/profile";
 import type { ConnectionFieldsProps } from "./types";
 
@@ -13,6 +23,7 @@ const postgresSslModes: PostgresSslMode[] = [
 
 function PostgresConnectionFields(props: ConnectionFieldsProps) {
   const { connection, onChange } = props;
+  const [showPassword, setShowPassword] = useState(false);
 
   return (
     <Stack spacing={1.5} width="100%">
@@ -88,9 +99,28 @@ function PostgresConnectionFields(props: ConnectionFieldsProps) {
           size="small"
           label="Password"
           required
-          type="password"
+          type={showPassword ? "text" : "password"}
           value={connection.password}
           onChange={(event) => onChange({ password: event.target.value })}
+          slotProps={{
+            input: {
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton
+                    edge="end"
+                    onClick={() => setShowPassword((current) => !current)}
+                    onMouseDown={(event) => event.preventDefault()}
+                  >
+                    {showPassword ? (
+                      <VisibilityOffOutlinedIcon fontSize="small" />
+                    ) : (
+                      <VisibilityOutlinedIcon fontSize="small" />
+                    )}
+                  </IconButton>
+                </InputAdornment>
+              ),
+            },
+          }}
         />
       </Box>
     </Stack>

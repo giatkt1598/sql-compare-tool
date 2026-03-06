@@ -136,7 +136,7 @@ function ProfileForm(props: ProfileFormProps) {
         mx: "auto",
       }}
     >
-      <Stack spacing={1.5}>
+      <Stack component="form" autoComplete="off" noValidate spacing={1.5}>
         <Typography variant="h5">
           {mode === "create" ? "Create Profile" : "Edit Profile"}
         </Typography>
