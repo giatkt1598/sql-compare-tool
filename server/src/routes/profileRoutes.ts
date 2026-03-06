@@ -130,7 +130,6 @@ router.get('/search/:keyword', ProfileController.searchProfiles.bind(ProfileCont
  */
 router.get('/recent', ProfileController.getRecentProfiles.bind(ProfileController));
 router.get('/recent/:limit', ProfileController.getRecentProfiles.bind(ProfileController));
-router.post('/test-connection', ProfileController.testConnectionDirect.bind(ProfileController));
 
 // ===================== STANDARD CRUD ROUTES =====================
 

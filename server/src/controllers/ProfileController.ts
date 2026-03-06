@@ -10,7 +10,7 @@ class ProfileController {
     } catch (error) {
       res.status(500).json({
         success: false,
-        message: error instanceof Error ? error.message : 'Unexpected error'
+        message: error instanceof Error ? error.message : 'Unexpected error',
       });
     }
   }
@@ -23,7 +23,7 @@ class ProfileController {
     } catch (error) {
       res.status(404).json({
         success: false,
-        message: error instanceof Error ? error.message : 'Unexpected error'
+        message: error instanceof Error ? error.message : 'Unexpected error',
       });
     }
   }
@@ -37,10 +37,13 @@ class ProfileController {
         return;
       }
 
-      if (!profileData.sqlProvider || !['SqlServer', 'Postgres'].includes(profileData.sqlProvider)) {
+      if (
+        !profileData.sqlProvider ||
+        !['SqlServer', 'Postgres'].includes(profileData.sqlProvider)
+      ) {
         res.status(400).json({
           success: false,
-          message: 'SQL Provider must be either SqlServer or Postgres'
+          message: 'SQL Provider must be either SqlServer or Postgres',
         });
         return;
       }
@@ -58,7 +61,7 @@ class ProfileController {
       if (!profileData.sqlConnection || !profileData.sqlConnection.host) {
         res.status(400).json({
           success: false,
-          message: 'Database connection details are required'
+          message: 'Database connection details are required',
         });
         return;
       }
@@ -70,7 +73,7 @@ class ProfileController {
       const statusCode = message.includes('already exists') ? 409 : 400;
       res.status(statusCode).json({
         success: false,
-        message
+        message,
       });
     }
   }
@@ -92,7 +95,7 @@ class ProfileController {
       const statusCode = message.includes('not found') ? 404 : 400;
       res.status(statusCode).json({
         success: false,
-        message
+        message,
       });
     }
   }
@@ -107,38 +110,7 @@ class ProfileController {
       const statusCode = message.includes('not found') ? 404 : 400;
       res.status(statusCode).json({
         success: false,
-        message
-      });
-    }
-  }
-
-  async testConnectionDirect(req: Request, res: Response): Promise<void> {
-    try {
-      const sqlProvider = req.body?.sqlProvider as SqlProvider | undefined;
-      const sqlConnection = req.body?.sqlConnection;
-
-      if (!sqlProvider || !['SqlServer', 'Postgres'].includes(sqlProvider)) {
-        res.status(400).json({
-          success: false,
-          message: 'SQL Provider must be either SqlServer or Postgres'
-        });
-        return;
-      }
-
-      if (!sqlConnection || typeof sqlConnection !== 'object') {
-        res.status(400).json({
-          success: false,
-          message: 'Database connection details are required'
-        });
-        return;
-      }
-
-      const result = await ProfileService.testConnection(sqlProvider, sqlConnection);
-      res.status(200).json(result);
-    } catch (error) {
-      res.status(400).json({
-        success: false,
-        message: error instanceof Error ? error.message : 'Unexpected error'
+        message,
       });
     }
   }
@@ -150,7 +122,7 @@ class ProfileController {
       if (!['SqlServer', 'Postgres'].includes(provider)) {
         res.status(400).json({
           success: false,
-          message: 'Invalid provider. Must be SqlServer or Postgres'
+          message: 'Invalid provider. Must be SqlServer or Postgres',
         });
         return;
       }
@@ -160,7 +132,7 @@ class ProfileController {
     } catch (error) {
       res.status(500).json({
         success: false,
-        message: error instanceof Error ? error.message : 'Unexpected error'
+        message: error instanceof Error ? error.message : 'Unexpected error',
       });
     }
   }
@@ -172,7 +144,7 @@ class ProfileController {
       if (!keyword || keyword.trim() === '') {
         res.status(400).json({
           success: false,
-          message: 'Search keyword is required'
+          message: 'Search keyword is required',
         });
         return;
       }
@@ -182,7 +154,7 @@ class ProfileController {
     } catch (error) {
       res.status(500).json({
         success: false,
-        message: error instanceof Error ? error.message : 'Unexpected error'
+        message: error instanceof Error ? error.message : 'Unexpected error',
       });
     }
   }
@@ -195,7 +167,7 @@ class ProfileController {
       if (Number.isNaN(limit) || limit < 1 || limit > 100) {
         res.status(400).json({
           success: false,
-          message: 'Limit must be between 1 and 100'
+          message: 'Limit must be between 1 and 100',
         });
         return;
       }
@@ -205,7 +177,7 @@ class ProfileController {
     } catch (error) {
       res.status(500).json({
         success: false,
-        message: error instanceof Error ? error.message : 'Unexpected error'
+        message: error instanceof Error ? error.message : 'Unexpected error',
       });
     }
   }
@@ -217,7 +189,7 @@ class ProfileController {
     } catch (error) {
       res.status(500).json({
         success: false,
-        message: error instanceof Error ? error.message : 'Unexpected error'
+        message: error instanceof Error ? error.message : 'Unexpected error',
       });
     }
   }

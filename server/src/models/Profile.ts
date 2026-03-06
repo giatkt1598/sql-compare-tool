@@ -25,7 +25,7 @@ class Profile implements ProfileData {
       database: data.sqlConnection?.database || '',
       username: data.sqlConnection?.username || '',
       password: data.sqlConnection?.password || '',
-      ...data.sqlConnection
+      ...data.sqlConnection,
     };
     this.testCases = Array.isArray(data.testCases) ? data.testCases : [];
     this.createdAt = data.createdAt || new Date().toISOString();
@@ -65,7 +65,7 @@ class Profile implements ProfileData {
 
     return {
       isValid: errors.length === 0,
-      errors
+      errors,
     };
   }
 
@@ -80,7 +80,7 @@ class Profile implements ProfileData {
       sqlConnection: this.sqlConnection,
       testCases: this.testCases,
       createdAt: this.createdAt,
-      updatedAt: this.updatedAt
+      updatedAt: this.updatedAt,
     };
   }
 }

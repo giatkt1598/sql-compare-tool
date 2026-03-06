@@ -1,5 +1,5 @@
-import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined'
-import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
+import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import {
   IconButton,
   Paper,
@@ -11,24 +11,26 @@ import {
   TableRow,
   Tooltip,
   Typography,
-} from '@mui/material'
-import type { Profile } from '../../models/profile'
+} from '@mui/material';
+import type { Profile } from '../../models/profile';
 
 interface ProfilesTableProps {
-  profiles: Profile[]
-  onEdit: (profile: Profile) => void
-  onDelete: (profile: Profile) => void
+  profiles: Profile[];
+  onEdit: (profile: Profile) => void;
+  onDelete: (profile: Profile) => void;
 }
 
 function ProfilesTable(props: ProfilesTableProps) {
-  const { profiles, onEdit, onDelete } = props
+  const { profiles, onEdit, onDelete } = props;
 
   if (profiles.length === 0) {
     return (
       <Paper sx={{ p: 3 }}>
-        <Typography variant="body1">No profile found. Create your first profile to start CRUD flow.</Typography>
+        <Typography variant="body1">
+          No profile found. Create your first profile to start CRUD flow.
+        </Typography>
       </Paper>
-    )
+    );
   }
 
   return (
@@ -72,7 +74,7 @@ function ProfilesTable(props: ProfilesTableProps) {
         </TableBody>
       </Table>
     </TableContainer>
-  )
+  );
 }
 
-export default ProfilesTable
+export default ProfilesTable;

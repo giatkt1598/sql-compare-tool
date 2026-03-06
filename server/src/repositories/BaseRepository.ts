@@ -42,7 +42,7 @@ function compareValues(a: unknown, b: unknown): number {
 
 class BaseRepository<
   TEntity extends EntityContract<TSerialized>,
-  TSerialized extends { id: string; createdAt?: string }
+  TSerialized extends { id: string; createdAt?: string },
 > {
   protected filePath: string;
   protected EntityClass: new (data: Partial<TSerialized>) => TEntity;
@@ -127,7 +127,7 @@ class BaseRepository<
       totalCount,
       pageNumber,
       pageSize,
-      totalPages: Math.ceil(totalCount / pageSize)
+      totalPages: Math.ceil(totalCount / pageSize),
     };
   }
 
@@ -160,7 +160,7 @@ class BaseRepository<
       ...existingItem,
       ...data,
       id,
-      createdAt: existingItem.createdAt
+      createdAt: existingItem.createdAt,
     });
 
     if (updatedEntity.validate) {
@@ -271,7 +271,7 @@ class QueryBuilder<TEntity> {
       totalCount,
       pageNumber,
       pageSize,
-      totalPages: Math.ceil(totalCount / pageSize)
+      totalPages: Math.ceil(totalCount / pageSize),
     };
   }
 

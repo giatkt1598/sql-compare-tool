@@ -1,7 +1,7 @@
-import { AppBar, Box, Container, Toolbar, Typography } from '@mui/material'
-import { Navigate, Route, Routes } from 'react-router-dom'
-import ProfilesPage from '../pages/ProfilesPage'
-import ProfileUpsertPage from '../pages/ProfileUpsertPage'
+import { AppBar, Box, Container, Toolbar, Typography } from '@mui/material';
+import { Navigate, Route, Routes } from 'react-router-dom';
+import ProfilesPage from '../pages/ProfilesPage';
+import ProfileUpsertPage from '../pages/ProfileUpsertPage';
 
 function App() {
   return (
@@ -23,7 +23,7 @@ function App() {
         </Routes>
       </Container>
     </Box>
-  )
+  );
 }
 
-export default App
+export default App;

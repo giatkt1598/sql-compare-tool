@@ -1,50 +1,46 @@
-import AddCircleOutlineOutlinedIcon from '@mui/icons-material/AddCircleOutlineOutlined'
-import RefreshOutlinedIcon from '@mui/icons-material/RefreshOutlined'
-import {
-  Alert,
-  Button,
-  CircularProgress,
-  Snackbar,
-  Stack,
-  Typography,
-} from '@mui/material'
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import ProfilesTable from '../components/profiles/ProfilesTable'
-import { useProfiles } from '../hooks/useProfiles'
-import type { Profile } from '../models/profile'
+import AddCircleOutlineOutlinedIcon from '@mui/icons-material/AddCircleOutlineOutlined';
+import RefreshOutlinedIcon from '@mui/icons-material/RefreshOutlined';
+import { Alert, Button, CircularProgress, Snackbar, Stack, Typography } from '@mui/material';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import ProfilesTable from '../components/profiles/ProfilesTable';
+import { useProfiles } from '../hooks/useProfiles';
+import type { Profile } from '../models/profile';
 
 interface ToastState {
-  open: boolean
-  message: string
-  severity: 'success' | 'error'
+  open: boolean;
+  message: string;
+  severity: 'success' | 'error';
 }
 
 function ProfilesPage() {
-  const navigate = useNavigate()
-  const { profiles, isLoading, error, fetchProfiles, deleteProfile } = useProfiles()
+  const navigate = useNavigate();
+  const { profiles, isLoading, error, fetchProfiles, deleteProfile } = useProfiles();
   const [toast, setToast] = useState<ToastState>({
     open: false,
     message: '',
     severity: 'success',
-  })
+  });
 
   const showToast = (message: string, severity: ToastState['severity']) => {
-    setToast({ open: true, message, severity })
-  }
+    setToast({ open: true, message, severity });
+  };
 
   const handleDeleteProfile = async (profile: Profile) => {
     if (!window.confirm(`Delete profile "${profile.name}"?`)) {
-      return
+      return;
     }
 
     try {
-      await deleteProfile(profile.id)
-      showToast('Profile deleted successfully', 'success')
+      await deleteProfile(profile.id);
+      showToast('Profile deleted successfully', 'success');
     } catch (deleteError) {
-      showToast(deleteError instanceof Error ? deleteError.message : 'Delete profile failed', 'error')
+      showToast(
+        deleteError instanceof Error ? deleteError.message : 'Delete profile failed',
+        'error'
+      );
     }
-  }
+  };
 
   return (
     <Stack spacing={3}>
@@ -56,7 +52,11 @@ function ProfilesPage() {
       >
         <Typography variant="h4">Profile Management</Typography>
         <Stack direction="row" spacing={1.5}>
-          <Button startIcon={<RefreshOutlinedIcon />} onClick={() => void fetchProfiles()} variant="outlined">
+          <Button
+            startIcon={<RefreshOutlinedIcon />}
+            onClick={() => void fetchProfiles()}
+            variant="outlined"
+          >
             Refresh
           </Button>
           <Button
@@ -99,7 +99,7 @@ function ProfilesPage() {
         </Alert>
       </Snackbar>
     </Stack>
-  )
+  );
 }
 
-export default ProfilesPage
+export default ProfilesPage;

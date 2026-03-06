@@ -1,24 +1,17 @@
-import {
-  Box,
-  IconButton,
-  InputAdornment,
-  MenuItem,
-  Stack,
-  TextField,
-} from "@mui/material";
-import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
-import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
-import { useState } from "react";
-import type { PostgresSslMode } from "../../../models/profile";
-import type { ConnectionFieldsProps } from "./types";
+import { Box, IconButton, InputAdornment, MenuItem, Stack, TextField } from '@mui/material';
+import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
+import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined';
+import { useState } from 'react';
+import type { PostgresSslMode } from '../../../models/profile';
+import type { ConnectionFieldsProps } from './types';
 
 const postgresSslModes: PostgresSslMode[] = [
-  "disable",
-  "allow",
-  "prefer",
-  "require",
-  "verify-ca",
-  "verify-full",
+  'disable',
+  'allow',
+  'prefer',
+  'require',
+  'verify-ca',
+  'verify-full',
 ];
 
 function PostgresConnectionFields(props: ConnectionFieldsProps) {
@@ -29,9 +22,9 @@ function PostgresConnectionFields(props: ConnectionFieldsProps) {
     <Stack spacing={1.5} width="100%">
       <Box
         sx={{
-          display: "grid",
+          display: 'grid',
           gap: 2,
-          gridTemplateColumns: { xs: "1fr", md: "3fr 1fr" },
+          gridTemplateColumns: { xs: '1fr', md: '3fr 1fr' },
         }}
       >
         <TextField
@@ -52,9 +45,9 @@ function PostgresConnectionFields(props: ConnectionFieldsProps) {
 
       <Box
         sx={{
-          display: "grid",
+          display: 'grid',
           gap: 2,
-          gridTemplateColumns: { xs: "1fr", md: "3fr 1fr" },
+          gridTemplateColumns: { xs: '1fr', md: '3fr 1fr' },
         }}
       >
         <TextField
@@ -69,10 +62,8 @@ function PostgresConnectionFields(props: ConnectionFieldsProps) {
           size="small"
           select
           label="SSL Mode"
-          value={connection.sslMode ?? "prefer"}
-          onChange={(event) =>
-            onChange({ sslMode: event.target.value as PostgresSslMode })
-          }
+          value={connection.sslMode ?? 'prefer'}
+          onChange={(event) => onChange({ sslMode: event.target.value as PostgresSslMode })}
         >
           {postgresSslModes.map((sslMode) => (
             <MenuItem key={sslMode} value={sslMode}>
@@ -83,9 +74,9 @@ function PostgresConnectionFields(props: ConnectionFieldsProps) {
       </Box>
       <Box
         sx={{
-          display: "grid",
+          display: 'grid',
           gap: 2,
-          gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+          gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
         }}
       >
         <TextField
@@ -99,7 +90,7 @@ function PostgresConnectionFields(props: ConnectionFieldsProps) {
           size="small"
           label="Password"
           required
-          type={showPassword ? "text" : "password"}
+          type={showPassword ? 'text' : 'password'}
           value={connection.password}
           onChange={(event) => onChange({ password: event.target.value })}
           slotProps={{

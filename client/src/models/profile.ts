@@ -1,39 +1,39 @@
-export type SqlProvider = 'SqlServer' | 'Postgres'
-export type SqlServerAuthType = 'WindowsAuth' | 'SqlServerAuth'
+export type SqlProvider = 'SqlServer' | 'Postgres';
+export type SqlServerAuthType = 'WindowsAuth' | 'SqlServerAuth';
 export type PostgresSslMode =
   | 'disable'
   | 'allow'
   | 'prefer'
   | 'require'
   | 'verify-ca'
-  | 'verify-full'
+  | 'verify-full';
 
 export interface SqlConnection {
-  host: string
-  port: number | string
-  database: string
-  username: string
-  password: string
-  authType?: SqlServerAuthType
-  encrypt?: boolean
-  trustServerCertificate?: boolean
-  sslMode?: PostgresSslMode
+  host: string;
+  port: number | string;
+  database: string;
+  username: string;
+  password: string;
+  authType?: SqlServerAuthType;
+  encrypt?: boolean;
+  trustServerCertificate?: boolean;
+  sslMode?: PostgresSslMode;
 }
 
 export interface Profile {
-  id: string
-  name: string
-  description: string
-  oldSqlFilePath: string
-  newSqlFilePath: string
-  sqlProvider: SqlProvider
-  sqlConnection: SqlConnection
-  testCases: string[]
-  createdAt: string
-  updatedAt: string
+  id: string;
+  name: string;
+  description: string;
+  oldSqlFilePath: string;
+  newSqlFilePath: string;
+  sqlProvider: SqlProvider;
+  sqlConnection: SqlConnection;
+  testCases: string[];
+  createdAt: string;
+  updatedAt: string;
 }
 
-export type ProfileFormInput = Omit<Profile, 'id' | 'createdAt' | 'updatedAt'>
+export type ProfileFormInput = Omit<Profile, 'id' | 'createdAt' | 'updatedAt'>;
 
 export const defaultSqlServerConnection: SqlConnection = {
   host: 'localhost',
@@ -44,7 +44,7 @@ export const defaultSqlServerConnection: SqlConnection = {
   authType: 'SqlServerAuth',
   encrypt: true,
   trustServerCertificate: true,
-}
+};
 
 export const defaultPostgresConnection: SqlConnection = {
   host: 'localhost',
@@ -53,14 +53,14 @@ export const defaultPostgresConnection: SqlConnection = {
   username: 'postgres',
   password: '',
   sslMode: 'prefer',
-}
+};
 
 export function getDefaultConnection(provider: SqlProvider): SqlConnection {
   if (provider === 'SqlServer') {
-    return { ...defaultSqlServerConnection }
+    return { ...defaultSqlServerConnection };
   }
 
-  return { ...defaultPostgresConnection }
+  return { ...defaultPostgresConnection };
 }
 
 export const defaultProfileFormInput: ProfileFormInput = {
@@ -71,10 +71,10 @@ export const defaultProfileFormInput: ProfileFormInput = {
   sqlProvider: 'SqlServer',
   sqlConnection: getDefaultConnection('SqlServer'),
   testCases: [],
-}
+};
 
 export function toProfileFormInput(profile: Profile): ProfileFormInput {
-  const fallbackConnection = getDefaultConnection(profile.sqlProvider)
+  const fallbackConnection = getDefaultConnection(profile.sqlProvider);
 
   return {
     name: profile.name,
@@ -87,5 +87,5 @@ export function toProfileFormInput(profile: Profile): ProfileFormInput {
       ...profile.sqlConnection,
     },
     testCases: profile.testCases,
-  }
+  };
 }

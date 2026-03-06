@@ -9,26 +9,20 @@ import {
   TextField,
   Tooltip,
   Typography,
-} from "@mui/material";
-import {
-  useEffect,
-  useRef,
-  type ChangeEvent,
-  type ReactElement,
-  type SyntheticEvent,
-} from "react";
+} from '@mui/material';
+import { useEffect, useRef, type ChangeEvent, type ReactElement, type SyntheticEvent } from 'react';
 import {
   getDefaultConnection,
   type ProfileFormInput,
   type SqlConnection,
   type SqlProvider,
-} from "../../models/profile";
-import PostgresConnectionFields from "./connection-fields/PostgresConnectionFields";
-import SqlServerConnectionFields from "./connection-fields/SqlServerConnectionFields";
-import type { ConnectionFieldsProps } from "./connection-fields/types";
+} from '../../models/profile';
+import PostgresConnectionFields from './connection-fields/PostgresConnectionFields';
+import SqlServerConnectionFields from './connection-fields/SqlServerConnectionFields';
+import type { ConnectionFieldsProps } from './connection-fields/types';
 
 interface ProfileFormProps {
-  mode: "create" | "edit";
+  mode: 'create' | 'edit';
   formValue: ProfileFormInput;
   loading: boolean;
   testingConnection?: boolean;
@@ -39,7 +33,7 @@ interface ProfileFormProps {
   onCancel: () => void;
 }
 
-const sqlProviders: SqlProvider[] = ["SqlServer", "Postgres"];
+const sqlProviders: SqlProvider[] = ['SqlServer', 'Postgres'];
 const connectionFieldsByProvider: Record<
   SqlProvider,
   (props: ConnectionFieldsProps) => ReactElement
@@ -60,12 +54,10 @@ function ProfileForm(props: ProfileFormProps) {
     onTestConnection,
     onCancel,
   } = props;
-  const providerConnectionCacheRef = useRef<Record<SqlProvider, SqlConnection>>(
-    {
-      SqlServer: getDefaultConnection("SqlServer"),
-      Postgres: getDefaultConnection("Postgres"),
-    },
-  );
+  const providerConnectionCacheRef = useRef<Record<SqlProvider, SqlConnection>>({
+    SqlServer: getDefaultConnection('SqlServer'),
+    Postgres: getDefaultConnection('Postgres'),
+  });
   const oldSqlFileInputRef = useRef<HTMLInputElement | null>(null);
   const newSqlFileInputRef = useRef<HTMLInputElement | null>(null);
   const ConnectionFields = connectionFieldsByProvider[formValue.sqlProvider];
@@ -76,17 +68,13 @@ function ProfileForm(props: ProfileFormProps) {
     };
   }, [formValue.sqlProvider, formValue.sqlConnection]);
 
-  const handleProviderTabChange = (
-    _event: SyntheticEvent,
-    provider: SqlProvider,
-  ) => {
+  const handleProviderTabChange = (_event: SyntheticEvent, provider: SqlProvider) => {
     providerConnectionCacheRef.current[formValue.sqlProvider] = {
       ...formValue.sqlConnection,
     };
 
     const nextConnection =
-      providerConnectionCacheRef.current[provider] ??
-      getDefaultConnection(provider);
+      providerConnectionCacheRef.current[provider] ?? getDefaultConnection(provider);
 
     onChange({
       ...formValue,
@@ -109,36 +97,36 @@ function ProfileForm(props: ProfileFormProps) {
   };
 
   const handlePickSqlFile = (
-    field: "oldSqlFilePath" | "newSqlFilePath",
-    event: ChangeEvent<HTMLInputElement>,
+    field: 'oldSqlFilePath' | 'newSqlFilePath',
+    event: ChangeEvent<HTMLInputElement>
   ) => {
     const selectedFile = event.target.files?.[0];
     if (!selectedFile) {
       return;
     }
 
-    const browserReportedPath = event.target.value?.trim() ?? "";
+    const browserReportedPath = event.target.value?.trim() ?? '';
     const nextPath = browserReportedPath || selectedFile.name;
 
     onChange({
       ...formValue,
       [field]: nextPath,
     });
-    event.target.value = "";
+    event.target.value = '';
   };
 
   return (
     <Paper
       sx={{
         p: 2.5,
-        width: { xs: "100%", md: 900 },
-        maxWidth: "100%",
-        mx: "auto",
+        width: { xs: '100%', md: 900 },
+        maxWidth: '100%',
+        mx: 'auto',
       }}
     >
       <Stack component="form" autoComplete="off" noValidate spacing={1.5}>
         <Typography variant="h5">
-          {mode === "create" ? "Create Profile" : "Edit Profile"}
+          {mode === 'create' ? 'Create Profile' : 'Edit Profile'}
         </Typography>
 
         <TextField
@@ -146,9 +134,7 @@ function ProfileForm(props: ProfileFormProps) {
           label="Name"
           required
           value={formValue.name}
-          onChange={(event) =>
-            onChange({ ...formValue, name: event.target.value })
-          }
+          onChange={(event) => onChange({ ...formValue, name: event.target.value })}
         />
         <TextField
           size="small"
@@ -156,18 +142,14 @@ function ProfileForm(props: ProfileFormProps) {
           multiline
           minRows={2}
           value={formValue.description}
-          onChange={(event) =>
-            onChange({ ...formValue, description: event.target.value })
-          }
+          onChange={(event) => onChange({ ...formValue, description: event.target.value })}
         />
         <TextField
           size="small"
           label="SQL Old File"
           required
           value={formValue.oldSqlFilePath}
-          onChange={(event) =>
-            onChange({ ...formValue, oldSqlFilePath: event.target.value })
-          }
+          onChange={(event) => onChange({ ...formValue, oldSqlFilePath: event.target.value })}
           helperText="Paste full absolute path (e.g. D:\\sql-compare-data-test\\query old.sql) if browser returns C:\\fakepath\\..."
           slotProps={{
             input: {
@@ -189,17 +171,15 @@ function ProfileForm(props: ProfileFormProps) {
           ref={oldSqlFileInputRef}
           type="file"
           accept=".sql"
-          style={{ display: "none" }}
-          onChange={(event) => handlePickSqlFile("oldSqlFilePath", event)}
+          style={{ display: 'none' }}
+          onChange={(event) => handlePickSqlFile('oldSqlFilePath', event)}
         />
         <TextField
           size="small"
           label="SQL New File"
           required
           value={formValue.newSqlFilePath}
-          onChange={(event) =>
-            onChange({ ...formValue, newSqlFilePath: event.target.value })
-          }
+          onChange={(event) => onChange({ ...formValue, newSqlFilePath: event.target.value })}
           helperText="Paste full absolute path (e.g. D:\\sql-compare-data-test\\query new.sql) if browser returns C:\\fakepath\\..."
           slotProps={{
             input: {
@@ -221,8 +201,8 @@ function ProfileForm(props: ProfileFormProps) {
           ref={newSqlFileInputRef}
           type="file"
           accept=".sql"
-          style={{ display: "none" }}
-          onChange={(event) => handlePickSqlFile("newSqlFilePath", event)}
+          style={{ display: 'none' }}
+          onChange={(event) => handlePickSqlFile('newSqlFilePath', event)}
         />
 
         <Box sx={{ pt: 1 }}>
@@ -239,23 +219,20 @@ function ProfileForm(props: ProfileFormProps) {
               <Tab
                 key={provider}
                 value={provider}
-                label={provider === "SqlServer" ? "SQL Server" : "Postgres"}
+                label={provider === 'SqlServer' ? 'SQL Server' : 'Postgres'}
               />
             ))}
           </Tabs>
 
-          <ConnectionFields
-            connection={formValue.sqlConnection}
-            onChange={updateConnection}
-          />
+          <ConnectionFields connection={formValue.sqlConnection} onChange={updateConnection} />
         </Box>
 
         <Stack direction="row" spacing={1.5} justifyContent="flex-end">
           <Tooltip
             title={
               canTestConnection
-                ? "Test database connection"
-                : "Save profile first to enable test connection"
+                ? 'Test database connection'
+                : 'Save profile first to enable test connection'
             }
           >
             <span>
@@ -264,7 +241,7 @@ function ProfileForm(props: ProfileFormProps) {
                 onClick={() => void onTestConnection?.()}
                 disabled={!canTestConnection || testingConnection || loading}
               >
-                {testingConnection ? "Testing..." : "Test Connection"}
+                {testingConnection ? 'Testing...' : 'Test Connection'}
               </Button>
             </span>
           </Tooltip>
@@ -272,12 +249,8 @@ function ProfileForm(props: ProfileFormProps) {
           <Button onClick={onCancel} disabled={loading}>
             Cancel
           </Button>
-          <Button
-            onClick={() => void onSubmit()}
-            variant="contained"
-            disabled={loading}
-          >
-            {mode === "create" ? "Create" : "Save changes"}
+          <Button onClick={() => void onSubmit()} variant="contained" disabled={loading}>
+            {mode === 'create' ? 'Create' : 'Save changes'}
           </Button>
         </Stack>
       </Stack>

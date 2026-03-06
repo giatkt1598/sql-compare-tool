@@ -1,35 +1,34 @@
-import { Alert, CircularProgress, Snackbar, Stack } from "@mui/material";
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { profileApi } from "../apis/profileApi";
-import ProfileForm from "../components/profiles/ProfileForm";
+import { Alert, CircularProgress, Snackbar, Stack } from '@mui/material';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { profileApi } from '../apis/profileApi';
+import { sqlApi } from '../apis/sqlApi';
+import ProfileForm from '../components/profiles/ProfileForm';
 import {
   defaultProfileFormInput,
   toProfileFormInput,
   type ProfileFormInput,
-} from "../models/profile";
+} from '../models/profile';
 
 interface ToastState {
   open: boolean;
   message: string;
-  severity: "success" | "error";
+  severity: 'success' | 'error';
 }
 
 function ProfileUpsertPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id?: string }>();
   const isEditMode = useMemo(() => Boolean(id), [id]);
-  const [formValue, setFormValue] = useState<ProfileFormInput>(
-    defaultProfileFormInput,
-  );
+  const [formValue, setFormValue] = useState<ProfileFormInput>(defaultProfileFormInput);
   const [isLoading, setIsLoading] = useState<boolean>(isEditMode);
   const [isSaving, setIsSaving] = useState(false);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastState>({
     open: false,
-    message: "",
-    severity: "success",
+    message: '',
+    severity: 'success',
   });
 
   useEffect(() => {
@@ -37,7 +36,7 @@ function ProfileUpsertPage() {
       setFormValue(defaultProfileFormInput);
       setIsLoading(false);
       setErrorMessage(null);
-      setToast({ open: false, message: "", severity: "success" });
+      setToast({ open: false, message: '', severity: 'success' });
       return;
     }
 
@@ -48,9 +47,7 @@ function ProfileUpsertPage() {
         const profile = await profileApi.getById(id);
         setFormValue(toProfileFormInput(profile));
       } catch (error) {
-        setErrorMessage(
-          error instanceof Error ? error.message : "Load profile failed",
-        );
+        setErrorMessage(error instanceof Error ? error.message : 'Load profile failed');
       } finally {
         setIsLoading(false);
       }
@@ -68,11 +65,9 @@ function ProfileUpsertPage() {
       } else {
         await profileApi.create(formValue);
       }
-      navigate("/profiles");
+      navigate('/profiles');
     } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : "Save profile failed",
-      );
+      setErrorMessage(error instanceof Error ? error.message : 'Save profile failed');
     } finally {
       setIsSaving(false);
     }
@@ -82,21 +77,20 @@ function ProfileUpsertPage() {
     setIsTestingConnection(true);
     setErrorMessage(null);
     try {
-      const result = await profileApi.testConnectionDirect({
+      const result = await sqlApi.testConnection({
         sqlProvider: formValue.sqlProvider,
         sqlConnection: formValue.sqlConnection,
       });
       setToast({
         open: true,
-        message: result.message || "Connection successful",
-        severity: "success",
+        message: result.message || 'Connection successful',
+        severity: 'success',
       });
     } catch (error) {
       setToast({
         open: true,
-        message:
-          error instanceof Error ? error.message : "Test connection failed",
-        severity: "error",
+        message: error instanceof Error ? error.message : 'Test connection failed',
+        severity: 'error',
       });
     } finally {
       setIsTestingConnection(false);
@@ -115,12 +109,12 @@ function ProfileUpsertPage() {
     <Stack
       spacing={2}
       sx={{
-        minHeight: "calc(100vh - 160px)",
-        alignItems: "center",
+        minHeight: 'calc(100vh - 160px)',
+        alignItems: 'center',
       }}
     >
       <ProfileForm
-        mode={isEditMode ? "edit" : "create"}
+        mode={isEditMode ? 'edit' : 'create'}
         formValue={formValue}
         loading={isSaving}
         testingConnection={isTestingConnection}
@@ -128,7 +122,7 @@ function ProfileUpsertPage() {
         onChange={setFormValue}
         onSubmit={handleSubmit}
         onTestConnection={handleTestConnection}
-        onCancel={() => navigate("/profiles")}
+        onCancel={() => navigate('/profiles')}
       />
 
       <Snackbar
@@ -138,10 +132,10 @@ function ProfileUpsertPage() {
           setErrorMessage(null);
           setToast((current) => ({ ...current, open: false }));
         }}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
       >
         <Alert
-          severity={errorMessage ? "error" : toast.severity}
+          severity={errorMessage ? 'error' : toast.severity}
           onClose={() => {
             setErrorMessage(null);
             setToast((current) => ({ ...current, open: false }));

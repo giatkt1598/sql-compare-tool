@@ -1,10 +1,5 @@
 import ProfileRepository from '../repositories/ProfileRepository';
-import type {
-  CreateProfileInput,
-  ProfileData,
-  SqlProvider,
-  UpdateProfileInput
-} from '../types/profile';
+import type { CreateProfileInput, SqlProvider, UpdateProfileInput } from '../types/profile';
 
 class ProfileService {
   getAllProfiles() {
@@ -52,18 +47,6 @@ class ProfileService {
     return { message: 'Profile deleted successfully', id };
   }
 
-  async testConnection(sqlProvider: SqlProvider, connection: ProfileData['sqlConnection']) {
-    if (!connection.host) {
-      throw new Error('Database host is required');
-    }
-
-    return {
-      success: true,
-      message: `Connection to ${sqlProvider} successful`,
-      timestamp: new Date().toISOString()
-    };
-  }
-
   getProfilesByProvider(provider: SqlProvider) {
     return ProfileRepository.getByProvider(provider);
   }
@@ -81,7 +64,7 @@ class ProfileService {
       totalProfiles: ProfileRepository.count(),
       sqlServerCount: ProfileRepository.countByProvider('SqlServer'),
       postgresCount: ProfileRepository.countByProvider('Postgres'),
-      usedProviders: ProfileRepository.getUsedProviders()
+      usedProviders: ProfileRepository.getUsedProviders(),
     };
   }
 }

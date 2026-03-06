@@ -6,7 +6,7 @@ const apiDocGlobs = [
   path.resolve(process.cwd(), 'src/routes/*.{ts,js}'),
   path.resolve(process.cwd(), 'src/controllers/*.{ts,js}'),
   path.resolve(__dirname, '../routes/*.{ts,js}'),
-  path.resolve(__dirname, '../controllers/*.{ts,js}')
+  path.resolve(__dirname, '../controllers/*.{ts,js}'),
 ];
 
 const options: Options = {
@@ -18,25 +18,25 @@ const options: Options = {
       description: 'API for comparing SQL queries from two different versions',
       contact: {
         name: 'SQL Comparer Team',
-        email: 'support@sqlcomparer.com'
+        email: 'support@sqlcomparer.com',
       },
       license: {
         name: 'MIT',
-        url: 'https://opensource.org/licenses/MIT'
-      }
+        url: 'https://opensource.org/licenses/MIT',
+      },
     },
     servers: [
       {
         url: 'http://localhost:5000',
-        description: 'Development server'
+        description: 'Development server',
       },
       {
         url: 'https://api.sqlcomparer.com',
-        description: 'Production server'
-      }
-    ]
+        description: 'Production server',
+      },
+    ],
   },
-  apis: apiDocGlobs
+  apis: apiDocGlobs,
 };
 
 const swaggerSpec = swaggerJsdoc(options);

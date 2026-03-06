@@ -7,17 +7,14 @@ import {
   Stack,
   Switch,
   TextField,
-} from "@mui/material";
-import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
-import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
-import { useState } from "react";
-import type { SqlServerAuthType } from "../../../models/profile";
-import type { ConnectionFieldsProps } from "./types";
+} from '@mui/material';
+import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
+import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined';
+import { useState } from 'react';
+import type { SqlServerAuthType } from '../../../models/profile';
+import type { ConnectionFieldsProps } from './types';
 
-const sqlServerAuthTypes: SqlServerAuthType[] = [
-  "WindowsAuth",
-  "SqlServerAuth",
-];
+const sqlServerAuthTypes: SqlServerAuthType[] = ['WindowsAuth', 'SqlServerAuth'];
 
 function SqlServerConnectionFields(props: ConnectionFieldsProps) {
   const { connection, onChange } = props;
@@ -29,7 +26,7 @@ function SqlServerConnectionFields(props: ConnectionFieldsProps) {
         size="small"
         select
         label="Auth Type"
-        value={connection.authType ?? "SqlServerAuth"}
+        value={connection.authType ?? 'SqlServerAuth'}
         onChange={(event) =>
           onChange({
             authType: event.target.value as SqlServerAuthType,
@@ -38,16 +35,16 @@ function SqlServerConnectionFields(props: ConnectionFieldsProps) {
       >
         {sqlServerAuthTypes.map((authType) => (
           <MenuItem key={authType} value={authType}>
-            {authType === "WindowsAuth" ? "Windows Auth" : "SQL Server Auth"}
+            {authType === 'WindowsAuth' ? 'Windows Auth' : 'SQL Server Auth'}
           </MenuItem>
         ))}
       </TextField>
 
       <Box
         sx={{
-          display: "grid",
+          display: 'grid',
           gap: 2,
-          gridTemplateColumns: { xs: "1fr", md: "3fr 1fr" },
+          gridTemplateColumns: { xs: '1fr', md: '3fr 1fr' },
         }}
       >
         <TextField
@@ -67,9 +64,9 @@ function SqlServerConnectionFields(props: ConnectionFieldsProps) {
       </Box>
       <Box
         sx={{
-          display: "grid",
+          display: 'grid',
           gap: 2,
-          gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+          gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
         }}
       >
         <TextField
@@ -83,7 +80,7 @@ function SqlServerConnectionFields(props: ConnectionFieldsProps) {
           size="small"
           label="Password"
           required
-          type={showPassword ? "text" : "password"}
+          type={showPassword ? 'text' : 'password'}
           value={connection.password}
           onChange={(event) => onChange({ password: event.target.value })}
           slotProps={{
@@ -121,9 +118,7 @@ function SqlServerConnectionFields(props: ConnectionFieldsProps) {
           control={
             <Switch
               checked={Boolean(connection.trustServerCertificate)}
-              onChange={(event) =>
-                onChange({ trustServerCertificate: event.target.checked })
-              }
+              onChange={(event) => onChange({ trustServerCertificate: event.target.checked })}
             />
           }
           label="Trust Server Certificate"

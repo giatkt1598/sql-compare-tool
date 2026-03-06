@@ -1,7 +1,7 @@
-import type { Profile, ProfileFormInput } from '../models/profile'
+import type { Profile, ProfileFormInput } from '../models/profile';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000'
-const API_PROFILE_URL = `${API_BASE_URL}/api/profiles`
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
+const API_PROFILE_URL = `${API_BASE_URL}/api/profiles`;
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
@@ -10,14 +10,14 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
       ...(init?.headers ?? {}),
     },
     ...init,
-  })
+  });
 
   if (!response.ok) {
-    const errorText = await response.text()
-    throw new Error(errorText || 'API request failed')
+    const errorText = await response.text();
+    throw new Error(errorText || 'API request failed');
   }
 
-  return (await response.json()) as T
+  return (await response.json()) as T;
 }
 
 export const profileApi = {
@@ -37,12 +37,4 @@ export const profileApi = {
     request<{ message: string; id: string }>(`${API_PROFILE_URL}/${id}`, {
       method: 'DELETE',
     }),
-  testConnectionDirect: (payload: Pick<ProfileFormInput, 'sqlProvider' | 'sqlConnection'>) =>
-    request<{ success: boolean; message: string; timestamp: string }>(
-      `${API_PROFILE_URL}/test-connection`,
-      {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      },
-    ),
-}
+};

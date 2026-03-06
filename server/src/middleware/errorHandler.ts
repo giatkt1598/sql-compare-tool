@@ -6,7 +6,7 @@ const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   if (err?.message && err.message.includes('not found')) {
     res.status(404).json({
       success: false,
-      message: err.message
+      message: err.message,
     });
     return;
   }
@@ -14,14 +14,14 @@ const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   if (err?.message && err.message.includes('already exists')) {
     res.status(409).json({
       success: false,
-      message: err.message
+      message: err.message,
     });
     return;
   }
 
   res.status(500).json({
     success: false,
-    message: err?.message || 'An unexpected error occurred'
+    message: err?.message || 'An unexpected error occurred',
   });
 };
 
