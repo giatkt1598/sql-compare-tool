@@ -1,5 +1,6 @@
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
+import TuneOutlinedIcon from '@mui/icons-material/TuneOutlined';
 import {
   IconButton,
   Paper,
@@ -18,10 +19,11 @@ interface ProfilesTableProps {
   profiles: Profile[];
   onEdit: (profile: Profile) => void;
   onDelete: (profile: Profile) => void;
+  onParameters: (profile: Profile) => void;
 }
 
 function ProfilesTable(props: ProfilesTableProps) {
-  const { profiles, onEdit, onDelete } = props;
+  const { profiles, onEdit, onDelete, onParameters } = props;
 
   if (profiles.length === 0) {
     return (
@@ -61,6 +63,11 @@ function ProfilesTable(props: ProfilesTableProps) {
                 <Tooltip title="Edit">
                   <IconButton onClick={() => onEdit(profile)} color="primary">
                     <EditOutlinedIcon />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Parameters">
+                  <IconButton onClick={() => onParameters(profile)} color="secondary">
+                    <TuneOutlinedIcon />
                   </IconButton>
                 </Tooltip>
                 <Tooltip title="Delete">

@@ -2,6 +2,7 @@ import { AppBar, Box, Container, Toolbar, Typography } from '@mui/material';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import ProfilesPage from '../pages/ProfilesPage';
 import ProfileUpsertPage from '../pages/ProfileUpsertPage';
+import SqlParametersPage from '../pages/SqlParametersPage';
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
           <Route path="/profiles" element={<ProfilesPage />} />
           <Route path="/profiles/new" element={<ProfileUpsertPage />} />
           <Route path="/profiles/:id" element={<ProfileUpsertPage />} />
+          <Route path="/profiles/:profileId/parameters" element={<SqlParametersPage />} />
         </Routes>
       </Container>
     </Box>

@@ -79,6 +79,7 @@ function ProfilesPage() {
         <ProfilesTable
           profiles={profiles}
           onEdit={(profile) => navigate(`/profiles/${profile.id}`)}
+          onParameters={(profile) => navigate(`/profiles/${profile.id}/parameters`)}
           onDelete={handleDeleteProfile}
         />
       )}
