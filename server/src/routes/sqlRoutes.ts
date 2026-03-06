@@ -35,6 +35,33 @@ const router = express.Router();
  *         description: Connection failed or invalid input
  */
 router.post('/test-connection', SqlController.testConnection.bind(SqlController));
+/**
+ * @swagger
+ * /api/sql/run-test-case:
+ *   post:
+ *     summary: Run one test case
+ *     description: Execute old/new SQL files for a test case, compare result sets, persist output JSON files, and update testcase execution fields.
+ *     tags:
+ *       - SQL
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/SqlRunTestCaseRequest'
+ *     responses:
+ *       200:
+ *         description: Test case executed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SqlRunTestCaseResponse'
+ *       400:
+ *         description: Invalid input or execution failure
+ *       404:
+ *         description: TestCase or Profile not found
+ */
+router.post('/run-test-case', SqlController.runTestCase.bind(SqlController));
 
 /**
  * @swagger
@@ -98,6 +125,64 @@ router.post('/test-connection', SqlController.testConnection.bind(SqlController)
  *         timestamp:
  *           type: string
  *           format: date-time
+ *
+ *     SqlRunTestCaseRequest:
+ *       type: object
+ *       required:
+ *         - testCaseId
+ *       properties:
+ *         testCaseId:
+ *           type: string
+ *           example: testcase-1772810968190-k4qab5mcd
+ *
+ *     SqlRunTestCaseResponse:
+ *       type: object
+ *       properties:
+ *         success:
+ *           type: boolean
+ *           example: true
+ *         message:
+ *           type: string
+ *           example: Run test case completed
+ *         testCaseId:
+ *           type: string
+ *         profileId:
+ *           type: string
+ *         executionResult:
+ *           type: string
+ *           enum: [success, failed]
+ *         executionDuration:
+ *           type: number
+ *           example: 125
+ *         executionTime:
+ *           type: string
+ *           format: date-time
+ *         files:
+ *           type: object
+ *           properties:
+ *             oldResultPath:
+ *               type: string
+ *             newResultPath:
+ *               type: string
+ *             diffResultPath:
+ *               type: string
+ *         diffSummary:
+ *           type: object
+ *           properties:
+ *             oldCount:
+ *               type: integer
+ *             newCount:
+ *               type: integer
+ *             differenceCount:
+ *               type: integer
+ *             onlyInOldCount:
+ *               type: integer
+ *             onlyInNewCount:
+ *               type: integer
+ *             changedCount:
+ *               type: integer
+ *             matched:
+ *               type: boolean
  */
 
 export default router;
