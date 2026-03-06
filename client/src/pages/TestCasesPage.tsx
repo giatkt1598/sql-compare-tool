@@ -24,6 +24,7 @@ import {
 } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { sqlApi } from '../apis/sqlApi';
 import { testCaseApi } from '../apis/testCaseApi';
 import type { TestCase } from '../models/testCase';
 
@@ -46,6 +47,7 @@ function TestCasesPage() {
     message: '',
     severity: 'success',
   });
+  const [runningTestCaseId, setRunningTestCaseId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!profileId) {
@@ -97,6 +99,30 @@ function TestCasesPage() {
 
   const handleRowClick = (item: TestCase) => {
     navigate(`/profiles/${profileId}/test-cases/${item.id}`);
+  };
+
+  const handleRunTestCase = async (item: TestCase) => {
+    setRunningTestCaseId(item.id);
+    try {
+      const result = await sqlApi.runTestCase(item.id);
+      setItems((current) =>
+        current.map((testCase) =>
+          testCase.id === item.id
+            ? {
+                ...testCase,
+                executionResult: result.executionResult,
+                executionDuration: result.executionDuration,
+                executionTime: result.executionTime,
+              }
+            : testCase
+        )
+      );
+      showToast(`Run "${item.name}" completed`, 'success');
+    } catch (runError) {
+      showToast(runError instanceof Error ? runError.message : 'Run test case failed', 'error');
+    } finally {
+      setRunningTestCaseId(null);
+    }
   };
 
   if (!profileId) {
@@ -215,8 +241,10 @@ function TestCasesPage() {
                         <Tooltip title="Run">
                           <IconButton
                             color="primary"
+                            disabled={runningTestCaseId === item.id}
                             onClick={(event) => {
                               event.stopPropagation();
+                              void handleRunTestCase(item);
                             }}
                           >
                             <PlayArrowOutlinedIcon />

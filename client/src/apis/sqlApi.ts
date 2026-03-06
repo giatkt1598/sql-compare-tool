@@ -29,4 +29,31 @@ export const sqlApi = {
         body: JSON.stringify(payload),
       }
     ),
+  runTestCase: (testCaseId: string) =>
+    request<{
+      success: boolean;
+      message: string;
+      testCaseId: string;
+      profileId: string;
+      executionResult: 'success' | 'failed';
+      executionDuration: number;
+      executionTime: string;
+      files: {
+        oldResultPath: string;
+        newResultPath: string;
+        diffResultPath: string;
+      };
+      diffSummary: {
+        oldCount: number;
+        newCount: number;
+        differenceCount: number;
+        onlyInOldCount: number;
+        onlyInNewCount: number;
+        changedCount: number;
+        matched: boolean;
+      };
+    }>(`${API_SQL_URL}/run-test-case`, {
+      method: 'POST',
+      body: JSON.stringify({ testCaseId }),
+    }),
 };
