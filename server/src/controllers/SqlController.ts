@@ -37,6 +37,14 @@ class SqlController {
   async runTestCase(req: Request, res: Response): Promise<void> {
     try {
       const testCaseId = String(req.body?.testCaseId ?? '').trim();
+      const draft = req.body?.draft as
+        | {
+            name?: string;
+            parameter?: string;
+            enabled?: boolean;
+          }
+        | undefined;
+
       if (!testCaseId) {
         res.status(400).json({
           success: false,
@@ -45,7 +53,7 @@ class SqlController {
         return;
       }
 
-      const result = await SqlService.runTestCase(testCaseId);
+      const result = await SqlService.runTestCase(testCaseId, draft);
       res.status(200).json(result);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unexpected error';

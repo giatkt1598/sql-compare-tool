@@ -134,6 +134,15 @@ router.post('/run-test-case', SqlController.runTestCase.bind(SqlController));
  *         testCaseId:
  *           type: string
  *           example: testcase-1772810968190-k4qab5mcd
+ *         draft:
+ *           type: object
+ *           properties:
+ *             name:
+ *               type: string
+ *             parameter:
+ *               type: string
+ *             enabled:
+ *               type: boolean
  *
  *     SqlRunTestCaseResponse:
  *       type: object

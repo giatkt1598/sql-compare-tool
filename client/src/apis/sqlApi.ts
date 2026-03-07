@@ -29,7 +29,14 @@ export const sqlApi = {
         body: JSON.stringify(payload),
       }
     ),
-  runTestCase: (testCaseId: string) =>
+  runTestCase: (
+    testCaseId: string,
+    draft?: {
+      name?: string;
+      parameter?: string;
+      enabled?: boolean;
+    }
+  ) =>
     request<{
       success: boolean;
       message: string;
@@ -46,6 +53,7 @@ export const sqlApi = {
         diffResultPath: string;
       };
       diffSummary: {
+        executionTime: string;
         oldCount: number;
         newCount: number;
         differenceCount: number;
@@ -56,6 +64,6 @@ export const sqlApi = {
       };
     }>(`${API_SQL_URL}/run-test-case`, {
       method: 'POST',
-      body: JSON.stringify({ testCaseId }),
+      body: JSON.stringify({ testCaseId, draft }),
     }),
 };

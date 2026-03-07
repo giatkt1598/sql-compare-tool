@@ -1,4 +1,5 @@
 import ArrowBackOutlinedIcon from '@mui/icons-material/ArrowBackOutlined';
+import PlayArrowOutlinedIcon from '@mui/icons-material/PlayArrowOutlined';
 import {
   Alert,
   Box,
@@ -14,6 +15,7 @@ import {
 } from '@mui/material';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { sqlApi } from '../apis/sqlApi';
 import { sqlParameterApi } from '../apis/sqlParameterApi';
 import { testCaseApi } from '../apis/testCaseApi';
 import type { SqlParameter } from '../models/sqlParameter';
@@ -55,6 +57,7 @@ function TestCaseUpsertPage() {
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isRunning, setIsRunning] = useState(false);
   const [formValue, setFormValue] = useState<TestCaseFormInput>(defaultTestCaseFormInput);
   const [existingTestCase, setExistingTestCase] = useState<TestCase | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -177,6 +180,52 @@ function TestCaseUpsertPage() {
     }
   };
 
+  const handleRun = async () => {
+    if (!profileId || !testCaseId || !existingTestCase) {
+      setError('Only saved test cases can be run');
+      return;
+    }
+
+    setIsRunning(true);
+    setError(null);
+    try {
+      const result = await sqlApi.runTestCase(testCaseId, {
+        name: formValue.name,
+        parameter: formValue.parameter,
+        enabled: formValue.enabled,
+      });
+
+      setExistingTestCase((current) =>
+        current
+          ? {
+              ...current,
+              executionCount: result.executionCount,
+              status: result.status,
+              error: result.error,
+              executionDuration: result.executionDuration,
+              executionTime: result.executionTime,
+            }
+          : current
+      );
+
+      setToast({
+        open: true,
+        message: 'Test case run completed',
+        severity: 'success',
+      });
+    } catch (runError) {
+      const message = runError instanceof Error ? runError.message : 'Run test case failed';
+      setError(message);
+      setToast({
+        open: true,
+        message,
+        severity: 'error',
+      });
+    } finally {
+      setIsRunning(false);
+    }
+  };
+
   if (!profileId) {
     return <Alert severity="error">profileId is required</Alert>;
   }
@@ -272,16 +321,35 @@ function TestCaseUpsertPage() {
               label="Enabled"
             />
 
-            <Stack direction="row" spacing={1.5} justifyContent="flex-end">
-              <Button
-                onClick={() => navigate(`/profiles/${profileId}/test-cases`)}
-                disabled={isSaving}
-              >
-                Cancel
-              </Button>
-              <Button variant="contained" onClick={() => void handleSubmit()} disabled={isSaving}>
-                {isEditMode ? 'Save changes' : 'Create test case'}
-              </Button>
+            <Stack direction="row" spacing={1.5} justifyContent="space-between">
+              <Stack direction="row" spacing={1.5}>
+                {isEditMode ? (
+                  <Button
+                    variant="outlined"
+                    startIcon={<PlayArrowOutlinedIcon />}
+                    onClick={() => void handleRun()}
+                    disabled={isSaving || isRunning}
+                    sx={{ minWidth: 160 }}
+                  >
+                    {isRunning ? 'Running...' : 'Run Test Case'}
+                  </Button>
+                ) : null}
+              </Stack>
+              <Stack direction="row" spacing={1.5}>
+                <Button
+                  onClick={() => navigate(`/profiles/${profileId}/test-cases`)}
+                  disabled={isSaving || isRunning}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="contained"
+                  onClick={() => void handleSubmit()}
+                  disabled={isSaving || isRunning}
+                >
+                  {isEditMode ? 'Save changes' : 'Create test case'}
+                </Button>
+              </Stack>
             </Stack>
           </Stack>
         </Box>

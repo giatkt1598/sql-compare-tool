@@ -52,6 +52,12 @@ interface RunTestCaseResult {
   diffSummary: ResultDiffPayload['summary'];
 }
 
+interface RunTestCaseDraft {
+  name?: string;
+  parameter?: string;
+  enabled?: boolean;
+}
+
 class SqlService {
   async testConnection(sqlProvider: SqlProvider, connection: ProfileData['sqlConnection']) {
     if (!connection.host) {
@@ -82,7 +88,7 @@ class SqlService {
     return Number.isNaN(parsed) ? fallback : parsed;
   }
 
-  async runTestCase(testCaseId: string): Promise<RunTestCaseResult> {
+  async runTestCase(testCaseId: string, draft?: RunTestCaseDraft): Promise<RunTestCaseResult> {
     const startedAt = Date.now();
     const executedAt = new Date().toISOString();
 
@@ -97,6 +103,12 @@ class SqlService {
     }
 
     const nextExecutionCount = testCase.executionCount + 1;
+    const effectiveTestCase = {
+      ...testCase,
+      name: draft?.name ?? testCase.name,
+      parameter: draft?.parameter ?? testCase.parameter,
+      enabled: draft?.enabled ?? testCase.enabled,
+    };
 
     TestCaseRepository.update(testCase.id, {
       executionCount: nextExecutionCount,
@@ -110,7 +122,7 @@ class SqlService {
       const oldSql = this.readSqlFile(profile.oldSqlFilePath, 'oldSqlFilePath');
       const newSql = this.readSqlFile(profile.newSqlFilePath, 'newSqlFilePath');
 
-      const rawParams = this.parseTestCaseParameterObject(testCase.parameter);
+      const rawParams = this.parseTestCaseParameterObject(effectiveTestCase.parameter);
       const sqlParameters = SqlParameterRepository.getByProfileId(profile.id).sort(
         (a, b) => a.index - b.index
       );
@@ -132,11 +144,19 @@ class SqlService {
       );
 
       const diffPayload = this.compareQueryResults(oldRows, newRows, executedAt);
-      const files = this.writeRunArtifacts(profile.name, testCase.name, nextExecutionCount, {
-        oldRows,
-        newRows,
-        diffPayload,
-      });
+      const files = this.writeRunArtifacts(
+        profile.name,
+        effectiveTestCase.name,
+        nextExecutionCount,
+        {
+          oldSql,
+          newSql,
+          parameterPayload: rawParams,
+          oldRows,
+          newRows,
+          diffPayload,
+        }
+      );
 
       const executionDuration = Date.now() - startedAt;
       const status: TestCaseStatus = diffPayload.summary.matched ? 'success' : 'failed';
@@ -618,6 +638,9 @@ class SqlService {
     testCaseName: string,
     executionCount: number,
     payload: {
+      oldSql: string;
+      newSql: string;
+      parameterPayload: Record<string, unknown>;
       oldRows: QueryRows;
       newRows: QueryRows;
       diffPayload: ResultDiffPayload;
@@ -637,14 +660,22 @@ class SqlService {
       `${safeTestCaseName}-${formattedExecutionCount}`
     );
     fs.mkdirSync(runDir, { recursive: true });
+    const dataDir = path.join(runDir, 'data');
+    fs.mkdirSync(dataDir, { recursive: true });
 
     const oldResultPath = path.join(runDir, 'old-result.json');
     const newResultPath = path.join(runDir, 'new-result.json');
     const diffResultPath = path.join(runDir, 'diff-result.json');
+    const oldSqlPath = path.join(dataDir, 'old.sql');
+    const newSqlPath = path.join(dataDir, 'new.sql');
+    const parameterPath = path.join(dataDir, 'parameter.json');
 
     fs.writeFileSync(oldResultPath, JSON.stringify(payload.oldRows, null, 2), 'utf8');
     fs.writeFileSync(newResultPath, JSON.stringify(payload.newRows, null, 2), 'utf8');
     fs.writeFileSync(diffResultPath, JSON.stringify(payload.diffPayload, null, 2), 'utf8');
+    fs.writeFileSync(oldSqlPath, payload.oldSql, 'utf8');
+    fs.writeFileSync(newSqlPath, payload.newSql, 'utf8');
+    fs.writeFileSync(parameterPath, JSON.stringify(payload.parameterPayload, null, 2), 'utf8');
 
     return {
       oldResultPath,
