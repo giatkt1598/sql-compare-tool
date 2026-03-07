@@ -29,6 +29,7 @@ function buildSqlServerConfig(connection: SqlConnection, requestTimeout: number)
   const isWindowsAuth = connection.authType === 'WindowsAuth';
   const encrypt = Boolean(connection.encrypt ?? true);
   const trustServerCertificate = Boolean(connection.trustServerCertificate ?? true);
+  const multipleActiveResultSets = Boolean(connection.multipleActiveResultSets ?? true);
 
   return {
     user: isWindowsAuth ? undefined : String(connection.username ?? ''),
@@ -40,6 +41,7 @@ function buildSqlServerConfig(connection: SqlConnection, requestTimeout: number)
       encrypt,
       trustServerCertificate,
       trustedConnection: isWindowsAuth,
+      multipleActiveResultSets,
     },
     connectionTimeout: 5000,
     requestTimeout,
@@ -82,6 +84,7 @@ function createSqlServerPool(
       `Trusted_Connection=${connection.authType === 'WindowsAuth' ? 'Yes' : 'No'}`,
       `Encrypt=${config.options.encrypt ? 'Yes' : 'No'}`,
       `TrustServerCertificate=${config.options.trustServerCertificate ? 'Yes' : 'No'}`,
+      `MultipleActiveResultSets=${config.options.multipleActiveResultSets ? 'True' : 'False'}`,
     ].join(';'),
   };
 

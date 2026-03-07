@@ -23,6 +23,7 @@ export const connectionFieldConfigs: ConnectionFieldConfig[] = [
       authType: 'SqlServerAuth',
       encrypt: true,
       trustServerCertificate: true,
+      multipleActiveResultSets: true,
     },
     component: SqlServerConnectionFields,
   },

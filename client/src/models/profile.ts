@@ -17,6 +17,7 @@ export interface SqlConnection {
   authType?: SqlServerAuthType;
   encrypt?: boolean;
   trustServerCertificate?: boolean;
+  multipleActiveResultSets?: boolean;
   sslMode?: PostgresSslMode;
 }
 

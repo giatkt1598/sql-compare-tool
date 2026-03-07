@@ -114,12 +114,12 @@ router.post('/run-many-test-cases', SqlController.runManyTestCases.bind(SqlContr
  *           enum:
  *             - SqlServer
  *             - Postgres
+ *             - MySQL
  *           example: SqlServer
  *         sqlConnection:
  *           type: object
  *           required:
  *             - host
- *             - username
  *           properties:
  *             host:
  *               type: string
@@ -143,6 +143,9 @@ router.post('/run-many-test-cases', SqlController.runManyTestCases.bind(SqlContr
  *               type: boolean
  *               example: true
  *             trustServerCertificate:
+ *               type: boolean
+ *               example: true
+ *             multipleActiveResultSets:
  *               type: boolean
  *               example: true
  *             sslMode:
@@ -246,7 +249,7 @@ router.post('/run-many-test-cases', SqlController.runManyTestCases.bind(SqlContr
  *           type: string
  *         sqlProvider:
  *           type: string
- *           enum: [SqlServer, Postgres]
+ *           enum: [SqlServer, Postgres, MySQL]
  *         oldSqlFilePath:
  *           type: string
  *         newSqlFilePath:
