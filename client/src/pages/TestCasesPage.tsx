@@ -28,13 +28,15 @@ import {
   TableCell,
   TableContainer,
   TableHead,
+  TablePagination,
   TableRow,
+  TableSortLabel,
   FormControlLabel,
   Tooltip,
   TextField,
   Typography,
 } from '@mui/material';
-import { type ChangeEvent, useEffect, useState } from 'react';
+import { type ChangeEvent, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { sqlApi } from '../apis/sqlApi';
 import { testCaseApi } from '../apis/testCaseApi';
@@ -64,6 +66,16 @@ interface TestCaseStreamEvent {
   message?: string;
 }
 
+type SortField =
+  | 'name'
+  | 'executionDuration'
+  | 'executionTime'
+  | 'parallelExecution'
+  | 'status'
+  | 'enabled';
+
+type SortDirection = 'asc' | 'desc';
+
 function TestCasesPage() {
   const navigate = useNavigate();
   const { profileId } = useParams<{ profileId: string }>();
@@ -84,6 +96,10 @@ function TestCasesPage() {
     runInParallel: 'no',
     maxConcurrency: '8',
   });
+  const [sortField, setSortField] = useState<SortField>('name');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   useEffect(() => {
     if (!profileId) {
@@ -321,6 +337,89 @@ function TestCasesPage() {
     return '-';
   };
 
+  const handleSort = (field: SortField) => {
+    setSortDirection((currentDirection) =>
+      sortField === field ? (currentDirection === 'asc' ? 'desc' : 'asc') : 'asc'
+    );
+    setSortField(field);
+    setPage(0);
+  };
+
+  const summary = useMemo(() => {
+    const total = items.length;
+    const totalSuccess = items.filter((item) => item.status === 'success').length;
+    const totalFailed = items.filter((item) => item.status === 'failed').length;
+    const totalError = items.filter((item) => item.status === 'error').length;
+    const totalRunning = items.filter((item) => item.status === 'running').length;
+    const durationValues = items
+      .map((item) => item.executionDuration)
+      .filter((value): value is number => typeof value === 'number' && value >= 0);
+    const avgDuration =
+      durationValues.length > 0
+        ? Math.round(durationValues.reduce((sum, value) => sum + value, 0) / durationValues.length)
+        : null;
+
+    return {
+      total,
+      totalSuccess,
+      totalFailed,
+      totalError,
+      totalRunning,
+      avgDuration,
+    };
+  }, [items]);
+
+  const sortedItems = useMemo(() => {
+    const valueRank = (value: TestCase['status']) => {
+      if (value === 'success') {
+        return 4;
+      }
+      if (value === 'failed') {
+        return 3;
+      }
+      if (value === 'error') {
+        return 2;
+      }
+      if (value === 'running') {
+        return 1;
+      }
+      return 0;
+    };
+
+    const sorted = [...items].sort((left, right) => {
+      let comparison = 0;
+
+      if (sortField === 'name') {
+        comparison = left.name.localeCompare(right.name);
+      } else if (sortField === 'executionDuration') {
+        comparison = (left.executionDuration ?? -1) - (right.executionDuration ?? -1);
+      } else if (sortField === 'executionTime') {
+        comparison =
+          new Date(left.executionTime ?? 0).getTime() -
+          new Date(right.executionTime ?? 0).getTime();
+      } else if (sortField === 'parallelExecution') {
+        comparison = Number(left.parallelExecution) - Number(right.parallelExecution);
+      } else if (sortField === 'enabled') {
+        comparison = Number(left.enabled) - Number(right.enabled);
+      } else if (sortField === 'status') {
+        comparison = valueRank(left.status) - valueRank(right.status);
+      }
+
+      if (comparison === 0) {
+        comparison = left.orderIndex - right.orderIndex;
+      }
+
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+
+    return sorted;
+  }, [items, sortDirection, sortField]);
+
+  const paginatedItems = useMemo(() => {
+    const start = page * rowsPerPage;
+    return sortedItems.slice(start, start + rowsPerPage);
+  }, [page, rowsPerPage, sortedItems]);
+
   if (!profileId) {
     return <Alert severity="error">profileId is required</Alert>;
   }
@@ -374,23 +473,120 @@ function TestCasesPage() {
         </Paper>
       ) : (
         <Stack spacing={1.5}>
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5}>
+            <Paper sx={{ p: 2, flex: 1 }}>
+              <Typography variant="caption" color="text.secondary">
+                Total Test Cases
+              </Typography>
+              <Typography variant="h6">{summary.total}</Typography>
+            </Paper>
+            <Paper sx={{ p: 2, flex: 1 }}>
+              <Typography variant="caption" color="text.secondary">
+                Avg Duration
+              </Typography>
+              <Typography variant="h6">
+                {summary.avgDuration !== null ? `${summary.avgDuration.toLocaleString()} ms` : '-'}
+              </Typography>
+            </Paper>
+            <Paper sx={{ p: 2, flex: 1 }}>
+              <Typography variant="caption" color="text.secondary">
+                Total Success
+              </Typography>
+              <Typography variant="h6" color="success.main">
+                {summary.totalSuccess}
+              </Typography>
+            </Paper>
+            <Paper sx={{ p: 2, flex: 1 }}>
+              <Typography variant="caption" color="text.secondary">
+                Total Failed
+              </Typography>
+              <Typography variant="h6" color="warning.main">
+                {summary.totalFailed}
+              </Typography>
+            </Paper>
+            <Paper sx={{ p: 2, flex: 1 }}>
+              <Typography variant="caption" color="text.secondary">
+                Total Error
+              </Typography>
+              <Typography variant="h6" color="error.main">
+                {summary.totalError}
+              </Typography>
+            </Paper>
+            <Paper sx={{ p: 2, flex: 1 }}>
+              <Typography variant="caption" color="text.secondary">
+                Running
+              </Typography>
+              <Typography variant="h6" color="info.main">
+                {summary.totalRunning}
+              </Typography>
+            </Paper>
+          </Stack>
+
           <TableContainer component={Paper}>
             <Table>
               <TableHead>
                 <TableRow>
-                  <TableCell>Name</TableCell>
-                  <TableCell width={180}>Execution Duration</TableCell>
-                  <TableCell width={150}>Execution Time</TableCell>
-                  <TableCell width={160}>Execution Parallel</TableCell>
-                  <TableCell width={120}>Status</TableCell>
-                  <TableCell width={50}>Enabled</TableCell>
+                  <TableCell>
+                    <TableSortLabel
+                      active={sortField === 'name'}
+                      direction={sortField === 'name' ? sortDirection : 'asc'}
+                      onClick={() => handleSort('name')}
+                    >
+                      Name
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell width={180}>
+                    <TableSortLabel
+                      active={sortField === 'executionDuration'}
+                      direction={sortField === 'executionDuration' ? sortDirection : 'asc'}
+                      onClick={() => handleSort('executionDuration')}
+                    >
+                      Execution Duration
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell width={160}>
+                    <TableSortLabel
+                      active={sortField === 'executionTime'}
+                      direction={sortField === 'executionTime' ? sortDirection : 'asc'}
+                      onClick={() => handleSort('executionTime')}
+                    >
+                      Execution Time
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell width={170}>
+                    <TableSortLabel
+                      active={sortField === 'parallelExecution'}
+                      direction={sortField === 'parallelExecution' ? sortDirection : 'asc'}
+                      onClick={() => handleSort('parallelExecution')}
+                    >
+                      Execution Parallel
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell width={120}>
+                    <TableSortLabel
+                      active={sortField === 'status'}
+                      direction={sortField === 'status' ? sortDirection : 'asc'}
+                      onClick={() => handleSort('status')}
+                    >
+                      Status
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell width={50}>
+                    <TableSortLabel
+                      active={sortField === 'enabled'}
+                      direction={sortField === 'enabled' ? sortDirection : 'asc'}
+                      onClick={() => handleSort('enabled')}
+                    >
+                      Enabled
+                    </TableSortLabel>
+                  </TableCell>
                   <TableCell width={160} align="right">
                     Actions
                   </TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {items.map((item) => (
+                {paginatedItems.map((item) => (
                   <Tooltip
                     key={item.id}
                     arrow
@@ -497,6 +693,18 @@ function TestCasesPage() {
                 ))}
               </TableBody>
             </Table>
+            <TablePagination
+              component="div"
+              count={sortedItems.length}
+              page={page}
+              onPageChange={(_event, nextPage) => setPage(nextPage)}
+              rowsPerPage={rowsPerPage}
+              onRowsPerPageChange={(event) => {
+                setRowsPerPage(Number(event.target.value));
+                setPage(0);
+              }}
+              rowsPerPageOptions={[10, 25, 50, 100]}
+            />
           </TableContainer>
 
           <Stack direction="row" spacing={2} justifyContent="flex-end" alignItems="center">
