@@ -3,51 +3,39 @@ import type {
   SqlParameterArrayItemInput,
   SqlParameterFormInput,
 } from '../models/sqlParameter';
-import { readApiErrorMessage } from './apiError';
+import { ApiService } from './base/ApiService';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
-const API_SQL_PARAMETER_URL = `${API_BASE_URL}/api/sql-parameters`;
-
-async function request<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(init?.headers ?? {}),
-    },
-    ...init,
-  });
-
-  if (!response.ok) {
-    throw new Error(await readApiErrorMessage(response, 'API request failed'));
+class SqlParameterApi extends ApiService {
+  constructor() {
+    super('/api/sql-parameters');
   }
 
-  return (await response.json()) as T;
+  getByProfileId(profileId: string) {
+    return this.get<SqlParameter[]>(`/profile/${profileId}`);
+  }
+
+  getById(id: string) {
+    return this.get<SqlParameter>(id);
+  }
+
+  create(profileId: string, payload: SqlParameterFormInput) {
+    return this.post<SqlParameter>('', {
+      profileId,
+      ...payload,
+    });
+  }
+
+  update(id: string, payload: Partial<SqlParameterFormInput>) {
+    return this.put<SqlParameter>(id, payload);
+  }
+
+  remove(id: string) {
+    return this.delete<{ message: string; id: string }>(id);
+  }
+
+  replaceByProfileId(profileId: string, items: SqlParameterArrayItemInput[]) {
+    return this.put<SqlParameter[]>(`/profile/${profileId}`, { items });
+  }
 }
 
-export const sqlParameterApi = {
-  getByProfileId: (profileId: string) =>
-    request<SqlParameter[]>(`${API_SQL_PARAMETER_URL}/profile/${profileId}`),
-  getById: (id: string) => request<SqlParameter>(`${API_SQL_PARAMETER_URL}/${id}`),
-  create: (profileId: string, payload: SqlParameterFormInput) =>
-    request<SqlParameter>(API_SQL_PARAMETER_URL, {
-      method: 'POST',
-      body: JSON.stringify({
-        profileId,
-        ...payload,
-      }),
-    }),
-  update: (id: string, payload: Partial<SqlParameterFormInput>) =>
-    request<SqlParameter>(`${API_SQL_PARAMETER_URL}/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(payload),
-    }),
-  remove: (id: string) =>
-    request<{ message: string; id: string }>(`${API_SQL_PARAMETER_URL}/${id}`, {
-      method: 'DELETE',
-    }),
-  replaceByProfileId: (profileId: string, items: SqlParameterArrayItemInput[]) =>
-    request<SqlParameter[]>(`${API_SQL_PARAMETER_URL}/profile/${profileId}`, {
-      method: 'PUT',
-      body: JSON.stringify({ items }),
-    }),
-};
+export const sqlParameterApi = new SqlParameterApi();
