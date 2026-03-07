@@ -53,6 +53,24 @@ function buildSampleJson(parameters: SqlParameter[]): string {
   return JSON.stringify(sample, null, 2);
 }
 
+function getNextDefaultTestCaseName(cases: TestCase[]): string {
+  const maxNumber = cases.reduce((currentMax, testCase) => {
+    const matched = /^TC-(\d+)$/i.exec(testCase.name.trim());
+    if (!matched) {
+      return currentMax;
+    }
+
+    const parsed = Number.parseInt(matched[1], 10);
+    if (Number.isNaN(parsed)) {
+      return currentMax;
+    }
+
+    return Math.max(currentMax, parsed);
+  }, 0);
+
+  return `TC-${String(maxNumber + 1).padStart(3, '0')}`;
+}
+
 function TestCaseUpsertPage() {
   const navigate = useNavigate();
   const { profileId, testCaseId } = useParams<{ profileId: string; testCaseId?: string }>();
@@ -102,6 +120,7 @@ function TestCaseUpsertPage() {
             autoRunWhenSqlChanges: testCase.autoRunWhenSqlChanges,
           });
         } else {
+          const nextDefaultName = getNextDefaultTestCaseName(cases);
           setExistingTestCase({
             id: '',
             profileId,
@@ -122,6 +141,7 @@ function TestCaseUpsertPage() {
           });
           setFormValue({
             ...defaultTestCaseFormInput,
+            name: nextDefaultName,
             parameter: buildSampleJson(parameters),
           });
         }

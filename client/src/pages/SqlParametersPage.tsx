@@ -39,7 +39,7 @@ interface ToastState {
 function createEmptyRow(nextIndex: number): SqlParameterArrayItemInput {
   return {
     index: nextIndex,
-    name: `param_${nextIndex + 1}`,
+    name: `param_${nextIndex}`,
     dataType: 'string',
   };
 }
@@ -90,7 +90,7 @@ function SqlParametersPage() {
 
   const nextIndex = useMemo(() => {
     if (rows.length === 0) {
-      return 0;
+      return 1;
     }
     return Math.max(...rows.map((item) => item.index)) + 1;
   }, [rows]);
