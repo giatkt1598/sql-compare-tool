@@ -17,9 +17,9 @@ JOIN location_access la ON la.id = ula.location_access_id
 JOIN locations l ON l.id = la.location_id
 WHERE (@id IS NULL OR u.id = @id)
   AND (@email IS NULL OR u.email ILIKE '%' || @email || '%')
-  AND (@enabled IS NULL OR u.enabled = @enabled)
-  AND (@org_access IS NULL OR oa.access_code = @org_access)
-  AND (@location_access IS NULL OR la.access_code = @location_access)
+  AND (@enabled IS NULL OR u.enabled IS TRUE)
+  AND (@org_access IS NULL OR TRUE)
+  AND (@location_access IS NULL OR TRUE)
   AND oa.enabled = TRUE
   AND la.enabled = TRUE
   AND l.is_active = TRUE

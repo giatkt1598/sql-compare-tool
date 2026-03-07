@@ -620,11 +620,12 @@ class SqlService {
   } {
     const safeProfileName = this.toSafePathSegment(profileName);
     const safeTestCaseName = this.toSafePathSegment(testCaseName);
+    const formattedExecutionCount = this.formatExecutionCount(executionCount);
     const runDir = path.join(
       FILE_PATHS.RESULTS,
       safeProfileName,
       safeTestCaseName,
-      `${safeTestCaseName}-${executionCount}`
+      `${safeTestCaseName}-${formattedExecutionCount}`
     );
     fs.mkdirSync(runDir, { recursive: true });
 
@@ -650,6 +651,10 @@ class SqlService {
       .replace(/[<>:"/\\|?*\x00-\x1F]/g, '-')
       .replace(/\s+/g, ' ');
     return sanitized || 'unnamed';
+  }
+
+  private formatExecutionCount(value: number): string {
+    return String(value).padStart(4, '0');
   }
 }
 
