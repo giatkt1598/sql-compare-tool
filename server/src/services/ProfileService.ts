@@ -218,9 +218,13 @@ class ProfileService {
         if (code < 32 || ['<', '>', ':', '"', '/', '\\', '|', '?', '*'].includes(character)) {
           return '_';
         }
+        if (/\s/.test(character)) {
+          return '-';
+        }
         return character;
       })
       .join('')
+      .replace(/-+/g, '-')
       .trim();
 
     return sanitized || 'profile-backup';

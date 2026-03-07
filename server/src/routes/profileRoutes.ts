@@ -200,7 +200,7 @@ router.post('/', ProfileController.createProfile.bind(ProfileController));
 router.post(
   '/restore',
   express.raw({
-    type: ['application/zip', 'application/octet-stream'],
+    type: () => true,
     limit: '200mb',
   }),
   ProfileController.restoreProfile.bind(ProfileController)

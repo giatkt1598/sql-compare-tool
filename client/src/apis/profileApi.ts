@@ -44,12 +44,13 @@ export const profileApi = {
       throw new Error(errorText || 'Backup profile failed');
     }
 
+    const explicitFileName = response.headers.get('X-Backup-File-Name');
+    const contentDisposition = response.headers.get('Content-Disposition');
+    const matchedFileName = contentDisposition?.match(/filename="?([^"]+)"?/)?.[1];
+
     return {
       blob: await response.blob(),
-      fileName:
-        response.headers
-          .get('Content-Disposition')
-          ?.match(/filename="(.+)"/)?.[1] ?? `profile-${id}.zip`,
+      fileName: explicitFileName ?? matchedFileName ?? `profile-${id}.zip`,
     };
   },
   restore: async (file: File) => {

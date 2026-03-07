@@ -120,6 +120,7 @@ class ProfileController {
       const id = String(req.params.id);
       const { fileName, buffer } = ProfileService.backupProfile(id);
       res.setHeader('Content-Type', 'application/zip');
+      res.setHeader('X-Backup-File-Name', fileName);
       res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
       res.status(200).send(buffer);
     } catch (error) {
@@ -134,7 +135,13 @@ class ProfileController {
 
   restoreProfile(req: Request, res: Response): void {
     try {
-      const zipBuffer = Buffer.isBuffer(req.body) ? req.body : Buffer.from([]);
+      const zipBuffer = Buffer.isBuffer(req.body)
+        ? req.body
+        : req.body instanceof Uint8Array
+          ? Buffer.from(req.body)
+          : typeof req.body === 'string'
+            ? Buffer.from(req.body)
+            : Buffer.from([]);
       if (zipBuffer.length === 0) {
         res.status(400).json({
           success: false,

@@ -13,9 +13,27 @@ import TestCaseAutoRunService from './services/TestCaseAutoRunService';
 const app = express();
 const PORT = Number(process.env.PORT || 5000);
 
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(
+  cors({
+    exposedHeaders: ['Content-Disposition', 'X-Backup-File-Name'],
+  })
+);
+app.use((req, res, next) => {
+  if (req.originalUrl.startsWith('/api/profiles/restore')) {
+    next();
+    return;
+  }
+
+  express.json()(req, res, next);
+});
+app.use((req, res, next) => {
+  if (req.originalUrl.startsWith('/api/profiles/restore')) {
+    next();
+    return;
+  }
+
+  express.urlencoded({ extended: true })(req, res, next);
+});
 
 app.use('/api-docs', swaggerUi.serve);
 app.get(
