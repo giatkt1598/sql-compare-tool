@@ -212,13 +212,15 @@ function ProfileForm(props: ProfileFormProps) {
           <Tabs
             value={formValue.sqlProvider}
             onChange={handleProviderTabChange}
-            variant="fullWidth"
+            variant="standard"
             sx={{ mb: 2 }}
           >
             {connectionFieldConfigs.map((providerConfig) => (
               <Tab
                 key={providerConfig.provider}
                 value={providerConfig.provider}
+                icon={<providerConfig.icon fontSize="small" />}
+                iconPosition="start"
                 label={providerConfig.label}
               />
             ))}

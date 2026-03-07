@@ -1,6 +1,11 @@
 import type { SqlConnection, SqlProvider } from '../../../models/profile';
 import MySqlConnectionFields from './MySqlConnectionFields';
 import PostgresConnectionFields from './PostgresConnectionFields';
+import {
+  MySqlProviderIcon,
+  PostgresProviderIcon,
+  SqlServerProviderIcon,
+} from './providerIcons';
 import SqlServerConnectionFields from './SqlServerConnectionFields';
 import type { ConnectionFieldConfig } from './types';
 
@@ -8,6 +13,7 @@ export const connectionFieldConfigs: ConnectionFieldConfig[] = [
   {
     provider: 'SqlServer',
     label: 'SQL Server',
+    icon: SqlServerProviderIcon,
     defaultConnection: {
       host: 'localhost',
       port: 1433,
@@ -23,6 +29,7 @@ export const connectionFieldConfigs: ConnectionFieldConfig[] = [
   {
     provider: 'Postgres',
     label: 'Postgres',
+    icon: PostgresProviderIcon,
     defaultConnection: {
       host: 'localhost',
       port: 5432,
@@ -36,6 +43,7 @@ export const connectionFieldConfigs: ConnectionFieldConfig[] = [
   {
     provider: 'MySQL',
     label: 'MySQL',
+    icon: MySqlProviderIcon,
     defaultConnection: {
       host: 'localhost',
       port: 3306,
