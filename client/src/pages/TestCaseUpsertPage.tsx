@@ -334,7 +334,8 @@ function TestCaseUpsertPage() {
             py: 2,
             borderBottom: 1,
             borderColor: 'divider',
-            bgcolor: 'grey.50',
+            bgcolor: 'action.hover',
+            transition: 'background-color 220ms ease, border-color 220ms ease',
           }}
         >
           <Typography variant="h6">{isEditMode ? 'Edit Test Case' : 'New Test Case'}</Typography>

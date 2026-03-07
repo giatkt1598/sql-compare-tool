@@ -1,5 +1,7 @@
-import { AppBar, Box, Container, Toolbar, Typography } from '@mui/material';
+import { AppBar, Box, Container, Stack, Toolbar, Typography } from '@mui/material';
+import type { PaletteMode } from '@mui/material';
 import { Link, Navigate, Route, Routes } from 'react-router-dom';
+import ColorModeSwitch from '../components/app/ColorModeSwitch';
 import ProfilesPage from '../pages/ProfilesPage';
 import ProfileUpsertPage from '../pages/ProfileUpsertPage';
 import SqlParametersPage from '../pages/SqlParametersPage';
@@ -7,9 +9,20 @@ import TestCaseResultPage from '../pages/TestCaseResultPage';
 import TestCaseUpsertPage from '../pages/TestCaseUpsertPage';
 import TestCasesPage from '../pages/TestCasesPage';
 
-function App() {
+type AppProps = {
+  colorMode: PaletteMode;
+  onToggleColorMode: () => void;
+};
+
+function App({ colorMode, onToggleColorMode }: AppProps) {
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+    <Box
+      sx={{
+        minHeight: '100vh',
+        bgcolor: 'background.default',
+        transition: 'background-color 220ms ease, color 220ms ease',
+      }}
+    >
       <AppBar position="sticky" elevation={0}>
         <Toolbar>
           <Link to="/" style={{ textDecoration: 'none', color: 'inherit' }}>
@@ -17,6 +30,10 @@ function App() {
               SQL Compare Tool
             </Typography>
           </Link>
+          <Box sx={{ flexGrow: 1 }} />
+          <Stack direction="row" spacing={0.5} alignItems="center">
+            <ColorModeSwitch colorMode={colorMode} onToggle={onToggleColorMode} />
+          </Stack>
         </Toolbar>
       </AppBar>
 
