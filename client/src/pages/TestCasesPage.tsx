@@ -56,21 +56,21 @@ function TestCasesPage() {
       return;
     }
 
-    const fetchItems = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const result = await testCaseApi.getByProfileId(profileId);
-        setItems(result.sort((a, b) => a.orderIndex - b.orderIndex));
-      } catch (fetchError) {
-        setError(fetchError instanceof Error ? fetchError.message : 'Load test cases failed');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    void fetchItems();
+    void fetchItems(profileId);
   }, [profileId]);
+
+  const fetchItems = async (profileId: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const result = await testCaseApi.getByProfileId(profileId);
+      setItems(result.sort((a, b) => a.orderIndex - b.orderIndex));
+    } catch (fetchError) {
+      setError(fetchError instanceof Error ? fetchError.message : 'Load test cases failed');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const showToast = (message: string, severity: ToastState['severity']) => {
     setToast({
@@ -120,7 +120,8 @@ function TestCasesPage() {
         )
       );
       showToast(`Run "${item.name}" completed`, 'success');
-    } catch (runError) {
+    } catch (runError: any) {
+      profileId && fetchItems(profileId);
       showToast(runError instanceof Error ? runError.message : 'Run test case failed', 'error');
     } finally {
       setRunningTestCaseId(null);
