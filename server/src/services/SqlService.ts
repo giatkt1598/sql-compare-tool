@@ -125,6 +125,10 @@ class SqlService {
     return TestCaseEventService.subscribe(testCaseId, response);
   }
 
+  subscribeToProfileTestCaseEvents(profileId: string, response: Response): () => void {
+    return TestCaseEventService.subscribeToProfile(profileId, response);
+  }
+
   cancelRun(testCaseId: string, reason: string): boolean {
     const execution = this.activeExecutions.get(testCaseId);
     if (!execution || execution.cancelled) {
@@ -148,6 +152,16 @@ class SqlService {
       message: reason,
       source: 'auto',
     });
+    const testCase = TestCaseRepository.getById(testCaseId);
+    if (testCase) {
+      TestCaseEventService.publishToProfile(testCase.profileId, {
+        type: 'running',
+        testCaseId,
+        status: 'running',
+        message: reason,
+        source: 'auto',
+      });
+    }
 
     return true;
   }
@@ -219,6 +233,15 @@ class SqlService {
         testCaseId: testCase.id,
         status: 'running',
         executionTime: executedAt,
+        message: 'Test case is running',
+        source,
+      });
+      TestCaseEventService.publishToProfile(profile.id, {
+        type: 'running',
+        testCaseId: testCase.id,
+        status: 'running',
+        executionTime: executedAt,
+        executionCount: nextExecutionCount,
         message: 'Test case is running',
         source,
       });
@@ -298,6 +321,15 @@ class SqlService {
         message: 'Run test case completed',
         source,
       });
+      TestCaseEventService.publishToProfile(profile.id, {
+        type: 'completed',
+        testCaseId: testCase.id,
+        status,
+        executionCount: nextExecutionCount,
+        executionTime: executedAt,
+        message: 'Run test case completed',
+        source,
+      });
 
       return {
         success: true,
@@ -356,6 +388,15 @@ class SqlService {
           executionTime: executedAt,
         });
         TestCaseEventService.publish(testCase.id, {
+          type: 'error',
+          testCaseId: testCase.id,
+          status: 'error',
+          executionCount: nextExecutionCount,
+          executionTime: executedAt,
+          message: errorMessage,
+          source,
+        });
+        TestCaseEventService.publishToProfile(profile.id, {
           type: 'error',
           testCaseId: testCase.id,
           status: 'error',

@@ -20,6 +20,10 @@ class SqlApi extends ApiService {
     return `${API_BASE_URL}/api/sql/test-cases/${testCaseId}/events`;
   }
 
+  getProfileTestCaseEventsUrl(profileId: string) {
+    return `${API_BASE_URL}/api/sql/profiles/${profileId}/test-case-events`;
+  }
+
   testConnection(payload: SqlTestConnectionPayload) {
     return this.post<SqlTestConnectionResponse>('/test-connection', payload);
   }

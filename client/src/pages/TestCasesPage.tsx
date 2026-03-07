@@ -112,67 +112,58 @@ function TestCasesPage() {
   }, [profileId]);
 
   useEffect(() => {
-    const eventSources = items.map((item) => {
-      const eventSource = new EventSource(sqlApi.getTestCaseEventsUrl(item.id));
-      const handleStreamEvent = (event: MessageEvent<string>) => {
-        try {
-          const payload = JSON.parse(event.data) as TestCaseStreamEvent;
-          if (!payload.testCaseId) {
-            return;
-          }
+    if (!profileId) {
+      return undefined;
+    }
 
-          if (payload.type === 'running') {
-            setItems((current) =>
-              current.map((testCase) =>
-                testCase.id === payload.testCaseId
-                  ? {
-                      ...testCase,
-                      status: 'running',
-                      error: null,
-                      executionTime: payload.executionTime ?? testCase.executionTime,
-                      executionCount: payload.executionCount ?? testCase.executionCount,
-                    }
-                  : testCase
-              )
-            );
-            return;
-          }
-
-          if (payload.type === 'completed' || payload.type === 'error') {
-            void testCaseApi.getById(payload.testCaseId).then((latestTestCase) => {
-              setItems((current) =>
-                current.map((testCase) =>
-                  testCase.id === latestTestCase.id ? latestTestCase : testCase
-                )
-              );
-            });
-          }
-        } catch {
-          // Ignore malformed event payloads.
+    const eventSource = new EventSource(sqlApi.getProfileTestCaseEventsUrl(profileId));
+    const handleStreamEvent = (event: MessageEvent<string>) => {
+      try {
+        const payload = JSON.parse(event.data) as TestCaseStreamEvent;
+        if (!payload.testCaseId) {
+          return;
         }
-      };
 
-      eventSource.addEventListener('running', handleStreamEvent);
-      eventSource.addEventListener('completed', handleStreamEvent);
-      eventSource.addEventListener('error', handleStreamEvent);
+        if (payload.type === 'running') {
+          setItems((current) =>
+            current.map((testCase) =>
+              testCase.id === payload.testCaseId
+                ? {
+                    ...testCase,
+                    status: 'running',
+                    error: null,
+                    executionTime: payload.executionTime ?? testCase.executionTime,
+                    executionCount: payload.executionCount ?? testCase.executionCount,
+                  }
+                : testCase
+            )
+          );
+          return;
+        }
 
-      return {
-        eventSource,
-        cleanup: () => {
-          eventSource.removeEventListener('running', handleStreamEvent);
-          eventSource.removeEventListener('completed', handleStreamEvent);
-          eventSource.removeEventListener('error', handleStreamEvent);
-          eventSource.close();
-        },
-      };
-    });
-
-    return () => {
-      for (const current of eventSources) {
-        current.cleanup();
+        if (payload.type === 'completed' || payload.type === 'error') {
+          void testCaseApi.getById(payload.testCaseId).then((latestTestCase) => {
+            setItems((current) =>
+              current.map((testCase) => (testCase.id === latestTestCase.id ? latestTestCase : testCase))
+            );
+          });
+        }
+      } catch {
+        // Ignore malformed event payloads.
       }
     };
-  }, [items.map((item) => item.id).join('|')]);
+
+    eventSource.addEventListener('running', handleStreamEvent);
+    eventSource.addEventListener('completed', handleStreamEvent);
+    eventSource.addEventListener('error', handleStreamEvent);
+
+    return () => {
+      eventSource.removeEventListener('running', handleStreamEvent);
+      eventSource.removeEventListener('completed', handleStreamEvent);
+      eventSource.removeEventListener('error', handleStreamEvent);
+      eventSource.close();
+    };
+  }, [profileId]);
 
   const fetchItems = async (profileId: string) => {
     setIsLoading(true);

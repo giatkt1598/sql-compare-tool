@@ -177,6 +177,20 @@ class SqlController {
     const cleanup = SqlService.subscribeToTestCaseEvents(testCaseId, res);
     req.on('close', cleanup);
   }
+
+  streamProfileTestCaseEvents(req: Request, res: Response): void {
+    const profileId = String(req.params.profileId ?? '').trim();
+    if (!profileId) {
+      res.status(400).json({
+        success: false,
+        message: 'profileId is required',
+      });
+      return;
+    }
+
+    const cleanup = SqlService.subscribeToProfileTestCaseEvents(profileId, res);
+    req.on('close', cleanup);
+  }
 }
 
 export default new SqlController();

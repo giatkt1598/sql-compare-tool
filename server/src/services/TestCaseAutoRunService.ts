@@ -21,12 +21,31 @@ class TestCaseAutoRunService {
 
   constructor() {
     TestCaseEventService.onSubscriberCountChanged((testCaseId, subscriberCount) => {
-      if (subscriberCount > 0) {
+      const testCase = TestCaseRepository.getById(testCaseId);
+      const hasProfileSubscribers = testCase
+        ? TestCaseEventService.hasProfileSubscribers(testCase.profileId)
+        : false;
+
+      if (subscriberCount > 0 || hasProfileSubscribers) {
         this.syncTestCase(testCaseId);
         return;
       }
 
       this.removeTestCase(testCaseId);
+    });
+
+    TestCaseEventService.onProfileSubscriberCountChanged((profileId, subscriberCount) => {
+      if (subscriberCount > 0) {
+        this.syncByProfileId(profileId);
+        return;
+      }
+
+      const profileTestCases = TestCaseRepository.getByProfileId(profileId);
+      for (const testCase of profileTestCases) {
+        if (!TestCaseEventService.hasSubscribers(testCase.id)) {
+          this.removeTestCase(testCase.id);
+        }
+      }
     });
   }
 
@@ -37,7 +56,7 @@ class TestCaseAutoRunService {
           (testCase) =>
             testCase.autoRunWhenSqlChanges &&
             testCase.enabled &&
-            TestCaseEventService.hasSubscribers(testCase.id)
+            this.hasAnySubscriber(testCase.id, testCase.profileId)
         )
         .map((testCase) => testCase.id)
     );
@@ -61,7 +80,7 @@ class TestCaseAutoRunService {
       if (
         testCase.autoRunWhenSqlChanges &&
         testCase.enabled &&
-        TestCaseEventService.hasSubscribers(testCase.id)
+        this.hasAnySubscriber(testCase.id, testCase.profileId)
       ) {
         eligibleIds.add(testCase.id);
         this.syncTestCase(testCase.id);
@@ -81,7 +100,7 @@ class TestCaseAutoRunService {
       !testCase ||
       !testCase.autoRunWhenSqlChanges ||
       !testCase.enabled ||
-      !TestCaseEventService.hasSubscribers(testCaseId)
+      !this.hasAnySubscriber(testCaseId, testCase.profileId)
     ) {
       this.removeTestCase(testCaseId);
       return;
@@ -229,6 +248,13 @@ class TestCaseAutoRunService {
 
   private normalizePath(filePath: string): string {
     return filePath.replace(/^["']|["']$/g, '');
+  }
+
+  private hasAnySubscriber(testCaseId: string, profileId: string): boolean {
+    return (
+      TestCaseEventService.hasSubscribers(testCaseId) ||
+      TestCaseEventService.hasProfileSubscribers(profileId)
+    );
   }
 }
 

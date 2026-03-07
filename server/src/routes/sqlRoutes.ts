@@ -40,6 +40,10 @@ router.get(
   SqlController.streamTestCaseEvents.bind(SqlController)
 );
 router.get(
+  '/profiles/:profileId/test-case-events',
+  SqlController.streamProfileTestCaseEvents.bind(SqlController)
+);
+router.get(
   '/test-cases/:testCaseId/latest-result',
   SqlController.getLatestTestCaseResult.bind(SqlController)
 );
