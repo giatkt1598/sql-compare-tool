@@ -1,4 +1,5 @@
 import type { TestCase } from '../models/testCase';
+import { readApiErrorMessage } from './apiError';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
 const API_TEST_CASE_URL = `${API_BASE_URL}/api/test-cases`;
@@ -13,8 +14,7 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
   });
 
   if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(errorText || 'API request failed');
+    throw new Error(await readApiErrorMessage(response, 'API request failed'));
   }
 
   return (await response.json()) as T;

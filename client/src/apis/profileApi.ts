@@ -1,4 +1,5 @@
 import type { Profile } from '../models/profile';
+import { readApiErrorMessage } from './apiError';
 
 export type ProfilePayload = Omit<Profile, 'id' | 'createdAt' | 'updatedAt'>;
 
@@ -15,8 +16,7 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
   });
 
   if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(errorText || 'API request failed');
+    throw new Error(await readApiErrorMessage(response, 'API request failed'));
   }
 
   return (await response.json()) as T;
@@ -42,8 +42,7 @@ export const profileApi = {
   backup: async (id: string) => {
     const response = await fetch(`${API_PROFILE_URL}/${id}/backup`);
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(errorText || 'Backup profile failed');
+      throw new Error(await readApiErrorMessage(response, 'Backup profile failed'));
     }
 
     const explicitFileName = response.headers.get('X-Backup-File-Name');
@@ -65,8 +64,7 @@ export const profileApi = {
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(errorText || 'Restore profile failed');
+      throw new Error(await readApiErrorMessage(response, 'Restore profile failed'));
     }
 
     return (await response.json()) as {
