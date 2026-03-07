@@ -175,7 +175,7 @@ function TestCaseUpsertPage() {
         message: isEditMode ? 'Test case updated successfully' : 'Test case created successfully',
         severity: 'success',
       });
-      navigate(`/profiles/${profileId}/test-cases`);
+      navigate(-1);
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : 'Save test case failed');
       setToast({
@@ -382,10 +382,7 @@ function TestCaseUpsertPage() {
                 ) : null}
               </Stack>
               <Stack direction="row" spacing={1.5}>
-                <Button
-                  onClick={() => navigate(`/profiles/${profileId}/test-cases`)}
-                  disabled={isSaving || isRunning}
-                >
+                <Button onClick={() => navigate(-1)} disabled={isSaving || isRunning}>
                   Cancel
                 </Button>
                 <Button
