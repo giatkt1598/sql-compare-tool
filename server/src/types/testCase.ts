@@ -9,6 +9,7 @@ export interface TestCaseData {
   orderIndex: number;
   name: string;
   parameter: string;
+  compareInOrder: boolean;
   executionCount: number;
   status: NullableTestCaseStatus;
   error: string | null;

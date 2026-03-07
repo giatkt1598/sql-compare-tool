@@ -35,6 +35,7 @@ export const sqlApi = {
       name?: string;
       parameter?: string;
       enabled?: boolean;
+      compareInOrder?: boolean;
     }
   ) =>
     request<{

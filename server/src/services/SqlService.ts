@@ -57,6 +57,7 @@ interface RunTestCaseDraft {
   name?: string;
   parameter?: string;
   enabled?: boolean;
+  compareInOrder?: boolean;
 }
 
 interface LatestTestCaseResult {
@@ -128,6 +129,7 @@ class SqlService {
       name: draft?.name ?? testCase.name,
       parameter: draft?.parameter ?? testCase.parameter,
       enabled: draft?.enabled ?? testCase.enabled,
+      compareInOrder: draft?.compareInOrder ?? testCase.compareInOrder,
     };
     let oldSql = '';
     let newSql = '';
@@ -168,7 +170,12 @@ class SqlService {
         boundParams
       );
 
-      const diffPayload = this.compareQueryResults(oldRows, newRows, executedAt);
+      const diffPayload = this.compareQueryResults(
+        oldRows,
+        newRows,
+        executedAt,
+        effectiveTestCase.compareInOrder
+      );
       const files = this.writeRunArtifacts(
         profile.name,
         effectiveTestCase.name,
@@ -669,6 +676,82 @@ class SqlService {
   }
 
   private compareQueryResults(
+    oldRows: QueryRows,
+    newRows: QueryRows,
+    executionTime: string,
+    compareInOrder: boolean
+  ): ResultDiffPayload {
+    if (compareInOrder) {
+      return this.compareQueryResultsInOrder(oldRows, newRows, executionTime);
+    }
+
+    return this.compareQueryResultsIgnoreOrder(oldRows, newRows, executionTime);
+  }
+
+  private compareQueryResultsInOrder(
+    oldRows: QueryRows,
+    newRows: QueryRows,
+    executionTime: string
+  ): ResultDiffPayload {
+    const differences: ResultDiffItem[] = [];
+    let onlyInOldCount = 0;
+    let onlyInNewCount = 0;
+    let changedCount = 0;
+    const maxLength = Math.max(oldRows.length, newRows.length);
+
+    for (let i = 0; i < maxLength; i += 1) {
+      const oldRecord = oldRows[i] ?? null;
+      const newRecord = newRows[i] ?? null;
+
+      if (oldRecord && !newRecord) {
+        onlyInOldCount += 1;
+        differences.push({
+          index: i,
+          type: 'onlyInOld',
+          oldRecord,
+          newRecord: null,
+        });
+        continue;
+      }
+
+      if (!oldRecord && newRecord) {
+        onlyInNewCount += 1;
+        differences.push({
+          index: i,
+          type: 'onlyInNew',
+          oldRecord: null,
+          newRecord,
+        });
+        continue;
+      }
+
+      if (oldRecord && newRecord && !this.deepEqual(oldRecord, newRecord)) {
+        changedCount += 1;
+        differences.push({
+          index: i,
+          type: 'changed',
+          oldRecord,
+          newRecord,
+        });
+      }
+    }
+
+    return {
+      summary: {
+        executionTime,
+        oldCount: oldRows.length,
+        newCount: newRows.length,
+        differenceCount: differences.length,
+        onlyInOldCount,
+        onlyInNewCount,
+        changedCount,
+        matched: differences.length === 0,
+      },
+      differences,
+    };
+  }
+
+  private compareQueryResultsIgnoreOrder(
     oldRows: QueryRows,
     newRows: QueryRows,
     executionTime: string

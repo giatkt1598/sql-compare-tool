@@ -59,6 +59,7 @@ class TestCaseController {
         orderIndex?: number;
         name?: string;
         parameter?: string;
+        compareInOrder?: boolean;
         executionCount?: number;
         status?: string | null;
         error?: string | null;
@@ -104,6 +105,7 @@ class TestCaseController {
         orderIndex,
         name: payload.name,
         parameter: payload.parameter ?? '',
+        compareInOrder: payload.compareInOrder ?? false,
         executionCount,
         status: (payload.status ?? null) as NullableTestCaseStatus,
         error: payload.error ?? null,
@@ -132,6 +134,7 @@ class TestCaseController {
         orderIndex?: number;
         name?: string;
         parameter?: string;
+        compareInOrder?: boolean;
         executionCount?: number;
         status?: string | null;
         error?: string | null;
@@ -162,6 +165,7 @@ class TestCaseController {
         orderIndex: payload.orderIndex,
         name: payload.name,
         parameter: payload.parameter,
+        compareInOrder: payload.compareInOrder,
         executionCount: payload.executionCount,
         status:
           payload.status !== undefined ? (payload.status as NullableTestCaseStatus) : undefined,

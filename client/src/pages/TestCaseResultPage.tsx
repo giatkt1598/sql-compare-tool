@@ -68,7 +68,7 @@ interface ToastState {
 
 interface CombinedRow {
   index: number;
-  diffType: 'added' | 'removed' | 'modified' | 'same';
+  diffType: 'added' | 'removed' | 'modified';
   oldRecord: QueryRow | null;
   newRecord: QueryRow | null;
 }
@@ -89,27 +89,18 @@ function isSameValue(left: unknown, right: unknown): boolean {
   return JSON.stringify(left) === JSON.stringify(right);
 }
 
-function buildCombinedRows(oldRows: QueryRow[], newRows: QueryRow[]): CombinedRow[] {
-  const maxLength = Math.max(oldRows.length, newRows.length);
-
-  return Array.from({ length: maxLength }, (_, index) => {
-    const oldRecord = oldRows[index] ?? null;
-    const newRecord = newRows[index] ?? null;
-
-    if (oldRecord && !newRecord) {
-      return { index, diffType: 'removed', oldRecord, newRecord };
-    }
-
-    if (!oldRecord && newRecord) {
-      return { index, diffType: 'added', oldRecord, newRecord };
-    }
-
-    if (oldRecord && newRecord && JSON.stringify(oldRecord) !== JSON.stringify(newRecord)) {
-      return { index, diffType: 'modified', oldRecord, newRecord };
-    }
-
-    return { index, diffType: 'same', oldRecord, newRecord };
-  });
+function buildCombinedRows(differences: ResultDiffItem[]): CombinedRow[] {
+  return differences.map((difference) => ({
+    index: difference.index,
+    diffType:
+      difference.type === 'onlyInOld'
+        ? 'removed'
+        : difference.type === 'onlyInNew'
+          ? 'added'
+          : 'modified',
+    oldRecord: difference.oldRecord,
+    newRecord: difference.newRecord,
+  }));
 }
 
 function getRowBackground(diffType: CombinedRow['diffType']): string | undefined {
@@ -197,12 +188,19 @@ function TestCaseResultPage() {
     return <Alert severity="error">profileId and testCaseId are required</Alert>;
   }
 
-  const combinedRows = data
-    ? buildCombinedRows(data.oldRows, data.newRows).filter((row) => row.diffType !== 'same')
-    : [];
+  const combinedRows = data ? buildCombinedRows(data.diffPayload.differences) : [];
   const schema = data
     ? Array.from(
-        new Set([...data.oldRows, ...data.newRows].flatMap((row) => Object.keys(row ?? {})))
+        new Set(
+          [
+            ...data.oldRows,
+            ...data.newRows,
+            ...data.diffPayload.differences.flatMap((item) => [
+              item.oldRecord ?? {},
+              item.newRecord ?? {},
+            ]),
+          ].flatMap((row) => Object.keys(row ?? {}))
+        )
       )
     : [];
   const pagedRows = combinedRows.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);

@@ -7,6 +7,7 @@ class TestCase implements TestCaseData {
   orderIndex: number;
   name: string;
   parameter: string;
+  compareInOrder: boolean;
   executionCount: number;
   status: TestCaseData['status'];
   error: string | null;
@@ -22,6 +23,7 @@ class TestCase implements TestCaseData {
     this.orderIndex = Number.isFinite(Number(data.orderIndex)) ? Number(data.orderIndex) : 0;
     this.name = data.name || '';
     this.parameter = data.parameter || '';
+    this.compareInOrder = typeof data.compareInOrder === 'boolean' ? data.compareInOrder : false;
     this.executionCount = Number.isFinite(Number(data.executionCount))
       ? Number(data.executionCount)
       : 0;
@@ -56,6 +58,10 @@ class TestCase implements TestCaseData {
 
     if (!this.name || this.name.trim() === '') {
       errors.push('name is required');
+    }
+
+    if (typeof this.compareInOrder !== 'boolean') {
+      errors.push('compareInOrder must be a boolean');
     }
 
     if (!Number.isInteger(this.executionCount) || this.executionCount < 0) {
@@ -98,6 +104,7 @@ class TestCase implements TestCaseData {
       orderIndex: this.orderIndex,
       name: this.name,
       parameter: this.parameter,
+      compareInOrder: this.compareInOrder,
       executionCount: this.executionCount,
       status: this.status,
       error: this.error,

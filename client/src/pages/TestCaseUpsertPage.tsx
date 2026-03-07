@@ -90,6 +90,7 @@ function TestCaseUpsertPage() {
             name: testCase.name,
             parameter: testCase.parameter || buildSampleJson(parameters),
             enabled: testCase.enabled,
+            compareInOrder: testCase.compareInOrder,
           });
         } else {
           setExistingTestCase({
@@ -98,6 +99,7 @@ function TestCaseUpsertPage() {
             orderIndex: cases.length,
             name: '',
             parameter: '',
+            compareInOrder: false,
             executionCount: 0,
             status: null,
             error: null,
@@ -137,6 +139,7 @@ function TestCaseUpsertPage() {
           orderIndex: existingTestCase.orderIndex,
           name: formValue.name,
           parameter: formValue.parameter,
+          compareInOrder: formValue.compareInOrder,
           executionCount: existingTestCase.executionCount,
           status: existingTestCase.status,
           error: existingTestCase.error,
@@ -153,6 +156,7 @@ function TestCaseUpsertPage() {
           orderIndex: existingTestCase.orderIndex,
           name: formValue.name,
           parameter: formValue.parameter,
+          compareInOrder: formValue.compareInOrder,
           executionCount: 0,
           enabled: formValue.enabled,
           status: null,
@@ -193,6 +197,7 @@ function TestCaseUpsertPage() {
         name: formValue.name,
         parameter: formValue.parameter,
         enabled: formValue.enabled,
+        compareInOrder: formValue.compareInOrder,
       });
 
       setExistingTestCase((current) =>
@@ -319,6 +324,21 @@ function TestCaseUpsertPage() {
                 />
               }
               label="Enabled"
+            />
+
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={formValue.compareInOrder}
+                  onChange={(event) =>
+                    setFormValue((current) => ({
+                      ...current,
+                      compareInOrder: event.target.checked,
+                    }))
+                  }
+                />
+              }
+              label="Compare in order"
             />
 
             <Stack direction="row" spacing={1.5} justifyContent="space-between">

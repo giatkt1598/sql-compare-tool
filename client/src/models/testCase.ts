@@ -6,6 +6,7 @@ export interface TestCase {
   orderIndex: number;
   name: string;
   parameter: string;
+  compareInOrder: boolean;
   executionCount: number;
   status: TestCaseStatus;
   error: string | null;
@@ -20,10 +21,12 @@ export interface TestCaseFormInput {
   name: string;
   parameter: string;
   enabled: boolean;
+  compareInOrder: boolean;
 }
 
 export const defaultTestCaseFormInput: TestCaseFormInput = {
   name: '',
   parameter: '{}',
   enabled: true,
+  compareInOrder: false,
 };
