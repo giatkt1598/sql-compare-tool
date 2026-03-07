@@ -50,13 +50,19 @@ class ProfileController {
         return;
       }
 
-      if (!profileData.oldSqlFilePath) {
-        res.status(400).json({ success: false, message: 'Old SQL file path is required' });
+      if (!profileData.oldSqlFilePath && !profileData.oldSqlContent) {
+        res.status(400).json({
+          success: false,
+          message: 'Old SQL file path or inline SQL content is required',
+        });
         return;
       }
 
-      if (!profileData.newSqlFilePath) {
-        res.status(400).json({ success: false, message: 'New SQL file path is required' });
+      if (!profileData.newSqlFilePath && !profileData.newSqlContent) {
+        res.status(400).json({
+          success: false,
+          message: 'New SQL file path or inline SQL content is required',
+        });
         return;
       }
 

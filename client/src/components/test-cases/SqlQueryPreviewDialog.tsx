@@ -15,6 +15,8 @@ export interface SqlQueryPreviewDialogValue {
   newSql: string;
   oldSqlFilePath: string;
   newSqlFilePath: string;
+  oldSqlSourceLabel: string;
+  newSqlSourceLabel: string;
 }
 
 interface SqlQueryPreviewDialogProps {
@@ -66,7 +68,9 @@ function SqlQueryPreviewDialog({
 
         <Stack spacing={1.5} sx={{ mt: 2, flex: 1, minHeight: 0 }}>
           <Typography variant="body2" color="text.secondary">
-            {activeTab === 'old' ? (value?.oldSqlFilePath ?? '') : (value?.newSqlFilePath ?? '')}
+            {activeTab === 'old'
+              ? (value?.oldSqlSourceLabel ?? value?.oldSqlFilePath ?? '')
+              : (value?.newSqlSourceLabel ?? value?.newSqlFilePath ?? '')}
           </Typography>
 
           <TextField

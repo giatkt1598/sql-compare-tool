@@ -6,6 +6,8 @@ export const defaultProfileFormInput: ProfileFormInput = {
   description: '',
   oldSqlFilePath: '',
   newSqlFilePath: '',
+  oldSqlContent: '',
+  newSqlContent: '',
   sqlProvider: 'SqlServer',
   sqlConnection: getDefaultConnection('SqlServer'),
   providerConnections: {
@@ -27,6 +29,8 @@ export function toProfileFormInput(profile: Profile): ProfileFormInput {
     description: profile.description,
     oldSqlFilePath: profile.oldSqlFilePath,
     newSqlFilePath: profile.newSqlFilePath,
+    oldSqlContent: profile.oldSqlContent ?? '',
+    newSqlContent: profile.newSqlContent ?? '',
     sqlProvider: profile.sqlProvider,
     sqlConnection: {
       ...providerConnections[profile.sqlProvider],
@@ -44,6 +48,8 @@ export function toProfilePayload(
     description: formValue.description,
     oldSqlFilePath: formValue.oldSqlFilePath,
     newSqlFilePath: formValue.newSqlFilePath,
+    oldSqlContent: formValue.oldSqlContent || undefined,
+    newSqlContent: formValue.newSqlContent || undefined,
     sqlProvider: formValue.sqlProvider,
     sqlConnection: formValue.providerConnections[formValue.sqlProvider] ?? formValue.sqlConnection,
     testCases: formValue.testCases,

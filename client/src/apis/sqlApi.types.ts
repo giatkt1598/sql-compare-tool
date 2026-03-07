@@ -74,6 +74,8 @@ export interface SqlBuildTestCaseQueryResponse {
   sqlProvider: SqlProvider | string;
   oldSqlFilePath: string;
   newSqlFilePath: string;
+  oldSqlSourceLabel: string;
+  newSqlSourceLabel: string;
   oldSql: string;
   newSql: string;
 }

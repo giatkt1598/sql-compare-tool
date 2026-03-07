@@ -279,6 +279,8 @@ function TestCaseUpsertPage() {
         newSql: result.newSql,
         oldSqlFilePath: result.oldSqlFilePath,
         newSqlFilePath: result.newSqlFilePath,
+        oldSqlSourceLabel: result.oldSqlSourceLabel,
+        newSqlSourceLabel: result.newSqlSourceLabel,
       });
       setQueryTab('old');
       setIsQueryDialogOpen(true);

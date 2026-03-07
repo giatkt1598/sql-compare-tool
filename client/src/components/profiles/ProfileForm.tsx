@@ -1,6 +1,7 @@
 import {
   Box,
   Button,
+  Chip,
   InputAdornment,
   Paper,
   Stack,
@@ -10,7 +11,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
-import { useRef, type ChangeEvent, type SyntheticEvent } from 'react';
+import { useRef, useState, type ChangeEvent, type SyntheticEvent } from 'react';
 import CheckIcon from '@mui/icons-material/Check';
 import { type ProfileFormInput, type SqlConnection, type SqlProvider } from '../../models/profile';
 import {
@@ -18,6 +19,7 @@ import {
   connectionFieldConfigs,
   getDefaultConnection,
 } from './connection-fields/providerRegistry';
+import ProfileSqlInputDialog from './ProfileSqlInputDialog';
 
 interface ProfileFormProps {
   mode: 'create' | 'edit';
@@ -47,6 +49,7 @@ function ProfileForm(props: ProfileFormProps) {
   } = props;
   const oldSqlFileInputRef = useRef<HTMLInputElement | null>(null);
   const newSqlFileInputRef = useRef<HTMLInputElement | null>(null);
+  const [sqlDialogTarget, setSqlDialogTarget] = useState<'old' | 'new' | null>(null);
   const providerConfig = connectionFieldConfigByProvider[formValue.sqlProvider];
   const ConnectionFields = providerConfig.component;
 
@@ -115,6 +118,9 @@ function ProfileForm(props: ProfileFormProps) {
     event.target.value = '';
   };
 
+  const hasInlineOldSql = Boolean(formValue.oldSqlContent?.trim());
+  const hasInlineNewSql = Boolean(formValue.newSqlContent?.trim());
+
   return (
     <Paper
       sx={{
@@ -147,14 +153,27 @@ function ProfileForm(props: ProfileFormProps) {
         <TextField
           size="small"
           label="SQL Old File"
-          required
           value={formValue.oldSqlFilePath}
           onChange={(event) => onChange({ ...formValue, oldSqlFilePath: event.target.value })}
-          helperText="Paste full absolute path (e.g. D:\\sql-compare-data-test\\query old.sql) if browser returns C:\\fakepath\\..."
+          helperText={
+            hasInlineOldSql
+              ? 'Inline SQL content is available and will be used by the server first.'
+              : 'Paste full absolute path (e.g. D:\\sql-compare-data-test\\query old.sql) if browser returns C:\\fakepath\\...'
+          }
           slotProps={{
             input: {
               endAdornment: (
                 <InputAdornment position="end">
+                  {hasInlineOldSql ? (
+                    <Chip label="Inline SQL" size="small" color="primary" sx={{ mr: 1 }} />
+                  ) : null}
+                  <Button
+                    size="small"
+                    onClick={() => setSqlDialogTarget('old')}
+                    disabled={loading}
+                  >
+                    Input SQL
+                  </Button>
                   <Button
                     size="small"
                     onClick={() => oldSqlFileInputRef.current?.click()}
@@ -177,14 +196,27 @@ function ProfileForm(props: ProfileFormProps) {
         <TextField
           size="small"
           label="SQL New File"
-          required
           value={formValue.newSqlFilePath}
           onChange={(event) => onChange({ ...formValue, newSqlFilePath: event.target.value })}
-          helperText="Paste full absolute path (e.g. D:\\sql-compare-data-test\\query new.sql) if browser returns C:\\fakepath\\..."
+          helperText={
+            hasInlineNewSql
+              ? 'Inline SQL content is available and will be used by the server first.'
+              : 'Paste full absolute path (e.g. D:\\sql-compare-data-test\\query new.sql) if browser returns C:\\fakepath\\...'
+          }
           slotProps={{
             input: {
               endAdornment: (
                 <InputAdornment position="end">
+                  {hasInlineNewSql ? (
+                    <Chip label="Inline SQL" size="small" color="primary" sx={{ mr: 1 }} />
+                  ) : null}
+                  <Button
+                    size="small"
+                    onClick={() => setSqlDialogTarget('new')}
+                    disabled={loading}
+                  >
+                    Input SQL
+                  </Button>
                   <Button
                     size="small"
                     onClick={() => newSqlFileInputRef.current?.click()}
@@ -268,6 +300,20 @@ function ProfileForm(props: ProfileFormProps) {
           </Button>
         </Stack>
       </Stack>
+      <ProfileSqlInputDialog
+        open={sqlDialogTarget === 'old'}
+        title="Input SQL Old Content"
+        value={formValue.oldSqlContent ?? ''}
+        onClose={() => setSqlDialogTarget(null)}
+        onChange={(value) => onChange({ ...formValue, oldSqlContent: value })}
+      />
+      <ProfileSqlInputDialog
+        open={sqlDialogTarget === 'new'}
+        title="Input SQL New Content"
+        value={formValue.newSqlContent ?? ''}
+        onClose={() => setSqlDialogTarget(null)}
+        onChange={(value) => onChange({ ...formValue, newSqlContent: value })}
+      />
     </Paper>
   );
 }

@@ -27,6 +27,8 @@ export interface Profile {
   description: string;
   oldSqlFilePath: string;
   newSqlFilePath: string;
+  oldSqlContent?: string;
+  newSqlContent?: string;
   sqlProvider: SqlProvider;
   sqlConnection: SqlConnection;
   testCases: string[];

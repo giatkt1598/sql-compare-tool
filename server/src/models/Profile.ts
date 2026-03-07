@@ -11,6 +11,8 @@ class Profile implements ProfileData {
   description: string;
   oldSqlFilePath: string;
   newSqlFilePath: string;
+  oldSqlContent?: string;
+  newSqlContent?: string;
   sqlProvider: ProfileData['sqlProvider'];
   sqlConnection: ProfileData['sqlConnection'];
   testCases: string[];
@@ -23,6 +25,8 @@ class Profile implements ProfileData {
     this.description = data.description || '';
     this.oldSqlFilePath = data.oldSqlFilePath || '';
     this.newSqlFilePath = data.newSqlFilePath || '';
+    this.oldSqlContent = data.oldSqlContent || '';
+    this.newSqlContent = data.newSqlContent || '';
     this.sqlProvider = data.sqlProvider || 'SqlServer';
     this.sqlConnection = {
       host: data.sqlConnection?.host || '',
@@ -50,12 +54,18 @@ class Profile implements ProfileData {
       errors.push('Profile name is required');
     }
 
-    if (!this.oldSqlFilePath || this.oldSqlFilePath.trim() === '') {
-      errors.push('Old SQL file path is required');
+    if (
+      (!this.oldSqlFilePath || this.oldSqlFilePath.trim() === '') &&
+      (!this.oldSqlContent || this.oldSqlContent.trim() === '')
+    ) {
+      errors.push('Old SQL file path or inline SQL content is required');
     }
 
-    if (!this.newSqlFilePath || this.newSqlFilePath.trim() === '') {
-      errors.push('New SQL file path is required');
+    if (
+      (!this.newSqlFilePath || this.newSqlFilePath.trim() === '') &&
+      (!this.newSqlContent || this.newSqlContent.trim() === '')
+    ) {
+      errors.push('New SQL file path or inline SQL content is required');
     }
 
     if (!this.sqlProvider || !isRegisteredSqlProvider(this.sqlProvider)) {
@@ -86,6 +96,8 @@ class Profile implements ProfileData {
       description: this.description,
       oldSqlFilePath: this.oldSqlFilePath,
       newSqlFilePath: this.newSqlFilePath,
+      oldSqlContent: this.oldSqlContent,
+      newSqlContent: this.newSqlContent,
       sqlProvider: this.sqlProvider,
       sqlConnection: this.sqlConnection,
       testCases: this.testCases,

@@ -71,6 +71,8 @@ interface BuildSqlQueryPreviewResult {
   sqlProvider: SqlProvider;
   oldSqlFilePath: string;
   newSqlFilePath: string;
+  oldSqlSourceLabel: string;
+  newSqlSourceLabel: string;
   oldSql: string;
   newSql: string;
 }
@@ -247,8 +249,8 @@ class SqlService {
       });
 
       this.throwIfCancelled(execution);
-      oldSql = this.readSqlFile(profile.oldSqlFilePath, 'oldSqlFilePath');
-      newSql = this.readSqlFile(profile.newSqlFilePath, 'newSqlFilePath');
+      oldSql = this.resolveSqlText(profile, 'old');
+      newSql = this.resolveSqlText(profile, 'new');
 
       this.throwIfCancelled(execution);
       rawParams = this.parseTestCaseParameterObject(effectiveTestCase.parameter);
@@ -438,8 +440,8 @@ class SqlService {
       throw new Error(`Profile with ID ${testCase.profileId} not found`);
     }
 
-    const oldSql = this.readSqlFile(profile.oldSqlFilePath, 'oldSqlFilePath');
-    const newSql = this.readSqlFile(profile.newSqlFilePath, 'newSqlFilePath');
+    const oldSql = this.resolveSqlText(profile, 'old');
+    const newSql = this.resolveSqlText(profile, 'new');
     const rawParams = this.parseTestCaseParameterObject(draft?.parameter ?? testCase.parameter);
     const sqlParameters = SqlParameterRepository.getByProfileId(profile.id).sort(
       (a, b) => a.index - b.index
@@ -453,6 +455,8 @@ class SqlService {
       sqlProvider: profile.sqlProvider,
       oldSqlFilePath: profile.oldSqlFilePath,
       newSqlFilePath: profile.newSqlFilePath,
+      oldSqlSourceLabel: this.getSqlSourceLabel(profile, 'old'),
+      newSqlSourceLabel: this.getSqlSourceLabel(profile, 'new'),
       oldSql: this.renderPreviewSql(profile.sqlProvider, oldSql, sqlParameters, boundParams),
       newSql: this.renderPreviewSql(profile.sqlProvider, newSql, sqlParameters, boundParams),
     };
@@ -608,6 +612,29 @@ class SqlService {
     }
 
     return sql;
+  }
+
+  private resolveSqlText(profile: ProfileData, target: 'old' | 'new'): string {
+    const inlineSql = target === 'old' ? profile.oldSqlContent : profile.newSqlContent;
+    if (inlineSql && inlineSql.trim() !== '') {
+      return inlineSql;
+    }
+
+    return this.readSqlFile(
+      target === 'old' ? profile.oldSqlFilePath : profile.newSqlFilePath,
+      target === 'old' ? 'oldSqlFilePath' : 'newSqlFilePath'
+    );
+  }
+
+  private getSqlSourceLabel(profile: ProfileData, target: 'old' | 'new'): string {
+    const inlineSql = target === 'old' ? profile.oldSqlContent : profile.newSqlContent;
+    const filePath = target === 'old' ? profile.oldSqlFilePath : profile.newSqlFilePath;
+
+    if (inlineSql && inlineSql.trim() !== '') {
+      return 'Inline SQL';
+    }
+
+    return filePath;
   }
 
   private parseTestCaseParameterObject(parameterText: string): Record<string, unknown> {

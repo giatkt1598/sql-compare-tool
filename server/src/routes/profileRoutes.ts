@@ -367,6 +367,12 @@ router.delete('/:id', ProfileController.deleteProfile.bind(ProfileController));
  *           type: string
  *           description: Absolute path to the new SQL file
  *           example: C:\sql\new_query.sql
+ *         oldSqlContent:
+ *           type: string
+ *           description: Inline SQL content for the old query. If provided, the server can use this instead of the file path.
+ *         newSqlContent:
+ *           type: string
+ *           description: Inline SQL content for the new query. If provided, the server can use this instead of the file path.
  *         sqlProvider:
  *           type: string
  *           description: SQL database provider
@@ -424,8 +430,6 @@ router.delete('/:id', ProfileController.deleteProfile.bind(ProfileController));
  *       type: object
  *       required:
  *         - name
- *         - oldSqlFilePath
- *         - newSqlFilePath
  *         - sqlProvider
  *         - sqlConnection
  *       properties:
@@ -441,6 +445,10 @@ router.delete('/:id', ProfileController.deleteProfile.bind(ProfileController));
  *         newSqlFilePath:
  *           type: string
  *           example: C:\sql\new_query.sql
+ *         oldSqlContent:
+ *           type: string
+ *         newSqlContent:
+ *           type: string
  *         sqlProvider:
  *           type: string
  *           enum: [SqlServer, Postgres, MySQL]
@@ -458,6 +466,10 @@ router.delete('/:id', ProfileController.deleteProfile.bind(ProfileController));
  *         oldSqlFilePath:
  *           type: string
  *         newSqlFilePath:
+ *           type: string
+ *         oldSqlContent:
+ *           type: string
+ *         newSqlContent:
  *           type: string
  *         sqlProvider:
  *           type: string
