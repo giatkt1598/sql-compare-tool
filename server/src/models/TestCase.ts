@@ -9,6 +9,7 @@ class TestCase implements TestCaseData {
   parameter: string;
   compareInOrder: boolean;
   parallelExecution: boolean;
+  expectedExecutionDuration: number | null;
   autoRunWhenSqlChanges: boolean;
   executionCount: number;
   status: TestCaseData['status'];
@@ -28,6 +29,12 @@ class TestCase implements TestCaseData {
     this.compareInOrder = typeof data.compareInOrder === 'boolean' ? data.compareInOrder : false;
     this.parallelExecution =
       typeof data.parallelExecution === 'boolean' ? data.parallelExecution : true;
+    this.expectedExecutionDuration =
+      data.expectedExecutionDuration === null
+        ? null
+        : data.expectedExecutionDuration === undefined
+          ? null
+          : Number(data.expectedExecutionDuration);
     this.autoRunWhenSqlChanges =
       typeof data.autoRunWhenSqlChanges === 'boolean' ? data.autoRunWhenSqlChanges : false;
     this.executionCount = Number.isFinite(Number(data.executionCount))
@@ -72,6 +79,13 @@ class TestCase implements TestCaseData {
 
     if (typeof this.parallelExecution !== 'boolean') {
       errors.push('parallelExecution must be a boolean');
+    }
+
+    if (
+      this.expectedExecutionDuration !== null &&
+      (!Number.isFinite(this.expectedExecutionDuration) || this.expectedExecutionDuration < 0)
+    ) {
+      errors.push('expectedExecutionDuration must be a number and greater than or equal to 0');
     }
 
     if (typeof this.autoRunWhenSqlChanges !== 'boolean') {
@@ -120,6 +134,7 @@ class TestCase implements TestCaseData {
       parameter: this.parameter,
       compareInOrder: this.compareInOrder,
       parallelExecution: this.parallelExecution,
+      expectedExecutionDuration: this.expectedExecutionDuration,
       autoRunWhenSqlChanges: this.autoRunWhenSqlChanges,
       executionCount: this.executionCount,
       status: this.status,

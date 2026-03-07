@@ -62,6 +62,7 @@ interface RunTestCaseDraft {
   enabled?: boolean;
   compareInOrder?: boolean;
   parallelExecution?: boolean;
+  expectedExecutionDuration?: number | null;
 }
 
 interface BuildSqlQueryPreviewResult {
@@ -216,6 +217,8 @@ class SqlService {
         enabled: draft?.enabled ?? testCase.enabled,
         compareInOrder: draft?.compareInOrder ?? testCase.compareInOrder,
         parallelExecution: draft?.parallelExecution ?? testCase.parallelExecution,
+        expectedExecutionDuration:
+          draft?.expectedExecutionDuration ?? testCase.expectedExecutionDuration,
       };
       effectiveTestCaseSnapshot = {
         ...testCase.toJSON(),
@@ -224,6 +227,7 @@ class SqlService {
         enabled: effectiveTestCase.enabled,
         compareInOrder: effectiveTestCase.compareInOrder,
         parallelExecution: effectiveTestCase.parallelExecution,
+        expectedExecutionDuration: effectiveTestCase.expectedExecutionDuration,
       };
 
       TestCaseRepository.update(testCase.id, {

@@ -11,6 +11,7 @@ export interface TestCaseData {
   parameter: string;
   compareInOrder: boolean;
   parallelExecution: boolean;
+  expectedExecutionDuration: number | null;
   autoRunWhenSqlChanges: boolean;
   executionCount: number;
   status: NullableTestCaseStatus;

@@ -427,7 +427,7 @@ function TestCaseResultPage() {
                           : data.status === 'error'
                             ? 'error'
                             : data.status === 'failed'
-                              ? 'warning'
+                              ? 'error'
                               : 'default'
                       }
                     />

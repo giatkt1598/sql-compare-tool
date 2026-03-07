@@ -45,6 +45,7 @@ class SqlController {
             enabled?: boolean;
             compareInOrder?: boolean;
             parallelExecution?: boolean;
+            expectedExecutionDuration?: number | null;
           }
         | undefined;
 
@@ -78,6 +79,7 @@ class SqlController {
             enabled?: boolean;
             compareInOrder?: boolean;
             parallelExecution?: boolean;
+            expectedExecutionDuration?: number | null;
           }
         | undefined;
 

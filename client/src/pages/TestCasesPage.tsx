@@ -144,7 +144,9 @@ function TestCasesPage() {
         if (payload.type === 'completed' || payload.type === 'error') {
           void testCaseApi.getById(payload.testCaseId).then((latestTestCase) => {
             setItems((current) =>
-              current.map((testCase) => (testCase.id === latestTestCase.id ? latestTestCase : testCase))
+              current.map((testCase) =>
+                testCase.id === latestTestCase.id ? latestTestCase : testCase
+              )
             );
           });
         }
@@ -314,7 +316,7 @@ function TestCasesPage() {
     }
 
     if (status === 'failed') {
-      return <Chip label="Failed" color="warning" size="small" />;
+      return <Chip label="Failed" color="error" size="small" />;
     }
 
     if (status === 'error') {
@@ -340,6 +342,34 @@ function TestCasesPage() {
     }
 
     return chip;
+  };
+
+  const renderExecutionDurationCell = (item: TestCase) => {
+    if (typeof item.executionDuration !== 'number') {
+      return '-';
+    }
+
+    const label = `${item.executionDuration.toLocaleString()} ms`;
+    const expected = item.expectedExecutionDuration;
+
+    if (typeof expected !== 'number' || expected <= 0) {
+      return label;
+    }
+
+    let color: 'success' | 'warning' | 'error' = 'success';
+    if (item.executionDuration > expected) {
+      color = 'error';
+    } else if (item.executionDuration >= expected * 0.8) {
+      color = 'warning';
+    }
+
+    return (
+      <Tooltip title={`Expected: ${expected.toLocaleString()} ms`} arrow>
+        <Typography variant="subtitle2" color={color} fontWeight={600}>
+          {label}
+        </Typography>
+      </Tooltip>
+    );
   };
 
   const handleSort = (field: SortField) => {
@@ -511,7 +541,7 @@ function TestCasesPage() {
               <Typography variant="caption" color="text.secondary">
                 Total Failed
               </Typography>
-              <Typography variant="h6" color="warning.main">
+              <Typography variant="h6" color="error.main">
                 {summary.totalFailed}
               </Typography>
             </Paper>
@@ -624,11 +654,7 @@ function TestCasesPage() {
                   >
                     <TableRow hover sx={{ cursor: 'pointer' }} onClick={() => handleRowClick(item)}>
                       <TableCell>{item.name}</TableCell>
-                      <TableCell>
-                        {item.executionDuration
-                          ? `${item.executionDuration.toLocaleString()} ms`
-                          : '-'}
-                      </TableCell>
+                      <TableCell>{renderExecutionDurationCell(item)}</TableCell>
                       <TableCell>
                         {item.executionTime ? (
                           <Stack spacing={0.25}>

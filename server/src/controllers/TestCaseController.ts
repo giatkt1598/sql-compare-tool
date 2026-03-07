@@ -67,6 +67,7 @@ class TestCaseController {
         parameter?: string;
         compareInOrder?: boolean;
         parallelExecution?: boolean;
+        expectedExecutionDuration?: number | null;
         autoRunWhenSqlChanges?: boolean;
         executionCount?: number;
         status?: string | null;
@@ -115,6 +116,8 @@ class TestCaseController {
         parameter: payload.parameter ?? '',
         compareInOrder: payload.compareInOrder ?? false,
         parallelExecution: payload.parallelExecution ?? true,
+        expectedExecutionDuration:
+          payload.expectedExecutionDuration === undefined ? null : payload.expectedExecutionDuration,
         autoRunWhenSqlChanges: payload.autoRunWhenSqlChanges ?? false,
         executionCount,
         status: (payload.status ?? null) as NullableTestCaseStatus,
@@ -146,6 +149,7 @@ class TestCaseController {
         parameter?: string;
         compareInOrder?: boolean;
         parallelExecution?: boolean;
+        expectedExecutionDuration?: number | null;
         autoRunWhenSqlChanges?: boolean;
         executionCount?: number;
         status?: string | null;
@@ -179,6 +183,10 @@ class TestCaseController {
         parameter: payload.parameter,
         compareInOrder: payload.compareInOrder,
         parallelExecution: payload.parallelExecution,
+        expectedExecutionDuration:
+          payload.expectedExecutionDuration !== undefined
+            ? payload.expectedExecutionDuration
+            : undefined,
         autoRunWhenSqlChanges: payload.autoRunWhenSqlChanges,
         executionCount: payload.executionCount,
         status:
