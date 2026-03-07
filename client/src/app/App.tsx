@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import ProfilesPage from '../pages/ProfilesPage';
 import ProfileUpsertPage from '../pages/ProfileUpsertPage';
 import SqlParametersPage from '../pages/SqlParametersPage';
+import TestCaseResultPage from '../pages/TestCaseResultPage';
 import TestCaseUpsertPage from '../pages/TestCaseUpsertPage';
 import TestCasesPage from '../pages/TestCasesPage';
 
@@ -17,21 +18,39 @@ function App() {
         </Toolbar>
       </AppBar>
 
-      <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Routes>
-          <Route path="/" element={<Navigate to="/profiles" replace />} />
-          <Route path="/profiles" element={<ProfilesPage />} />
-          <Route path="/profiles/new" element={<ProfileUpsertPage />} />
-          <Route path="/profiles/:id" element={<ProfileUpsertPage />} />
-          <Route path="/profiles/:profileId/parameters" element={<SqlParametersPage />} />
-          <Route path="/profiles/:profileId/test-cases" element={<TestCasesPage />} />
-          <Route path="/profiles/:profileId/test-cases/new" element={<TestCaseUpsertPage />} />
-          <Route
-            path="/profiles/:profileId/test-cases/:testCaseId"
-            element={<TestCaseUpsertPage />}
-          />
-        </Routes>
-      </Container>
+      <Routes>
+        <Route path="/" element={<Navigate to="/profiles" replace />} />
+        <Route
+          path="/profiles/:profileId/test-cases/:testCaseId/results"
+          element={
+            <Box sx={{ px: '12px', py: 4 }}>
+              <TestCaseResultPage />
+            </Box>
+          }
+        />
+        <Route
+          path="*"
+          element={
+            <Container maxWidth="lg" sx={{ py: 4 }}>
+              <Routes>
+                <Route path="/profiles" element={<ProfilesPage />} />
+                <Route path="/profiles/new" element={<ProfileUpsertPage />} />
+                <Route path="/profiles/:id" element={<ProfileUpsertPage />} />
+                <Route path="/profiles/:profileId/parameters" element={<SqlParametersPage />} />
+                <Route path="/profiles/:profileId/test-cases" element={<TestCasesPage />} />
+                <Route
+                  path="/profiles/:profileId/test-cases/new"
+                  element={<TestCaseUpsertPage />}
+                />
+                <Route
+                  path="/profiles/:profileId/test-cases/:testCaseId/edit"
+                  element={<TestCaseUpsertPage />}
+                />
+              </Routes>
+            </Container>
+          }
+        />
+      </Routes>
     </Box>
   );
 }

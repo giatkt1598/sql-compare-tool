@@ -58,6 +58,24 @@ interface RunTestCaseDraft {
   enabled?: boolean;
 }
 
+interface LatestTestCaseResult {
+  testCaseId: string;
+  profileId: string;
+  executionCount: number;
+  executionTime: string | null;
+  status: TestCaseStatus | null;
+  error: string | null;
+  oldRows: QueryRows;
+  newRows: QueryRows;
+  diffPayload: ResultDiffPayload;
+  files: {
+    runDir: string;
+    oldResultPath: string;
+    newResultPath: string;
+    diffResultPath: string;
+  };
+}
+
 class SqlService {
   async testConnection(sqlProvider: SqlProvider, connection: ProfileData['sqlConnection']) {
     if (!connection.host) {
@@ -198,6 +216,57 @@ class SqlService {
 
       throw new Error(errorMessage);
     }
+  }
+
+  getLatestTestCaseResult(testCaseId: string): LatestTestCaseResult {
+    const testCase = TestCaseRepository.getById(testCaseId);
+    if (!testCase) {
+      throw new Error(`TestCase with ID ${testCaseId} not found`);
+    }
+
+    const profile = ProfileRepository.getById(testCase.profileId);
+    if (!profile) {
+      throw new Error(`Profile with ID ${testCase.profileId} not found`);
+    }
+
+    if (testCase.executionCount <= 0) {
+      throw new Error(`No execution result found for testCase ${testCaseId}`);
+    }
+
+    const runDir = this.resolveLatestRunDir(profile.name, testCase.name, testCase.executionCount);
+    const oldResultPath = path.join(runDir, 'old-result.json');
+    const newResultPath = path.join(runDir, 'new-result.json');
+    const diffResultPath = path.join(runDir, 'diff-result.json');
+
+    return {
+      testCaseId: testCase.id,
+      profileId: profile.id,
+      executionCount: testCase.executionCount,
+      executionTime: testCase.executionTime,
+      status: testCase.status,
+      error: testCase.error,
+      oldRows: this.readJsonFile<QueryRows>(oldResultPath, []),
+      newRows: this.readJsonFile<QueryRows>(newResultPath, []),
+      diffPayload: this.readJsonFile<ResultDiffPayload>(diffResultPath, {
+        summary: {
+          executionTime: testCase.executionTime ?? '',
+          oldCount: 0,
+          newCount: 0,
+          differenceCount: 0,
+          onlyInOldCount: 0,
+          onlyInNewCount: 0,
+          changedCount: 0,
+          matched: true,
+        },
+        differences: [],
+      }),
+      files: {
+        runDir,
+        oldResultPath,
+        newResultPath,
+        diffResultPath,
+      },
+    };
   }
 
   private readSqlFile(filePath: string, fieldName: 'oldSqlFilePath' | 'newSqlFilePath'): string {
@@ -695,6 +764,40 @@ class SqlService {
 
   private formatExecutionCount(value: number): string {
     return String(value).padStart(4, '0');
+  }
+
+  private resolveLatestRunDir(
+    profileName: string,
+    testCaseName: string,
+    executionCount: number
+  ): string {
+    const safeProfileName = this.toSafePathSegment(profileName);
+    const safeTestCaseName = this.toSafePathSegment(testCaseName);
+    const expectedDir = path.join(
+      FILE_PATHS.RESULTS,
+      safeProfileName,
+      safeTestCaseName,
+      `${safeTestCaseName}-${this.formatExecutionCount(executionCount)}`
+    );
+
+    if (fs.existsSync(expectedDir)) {
+      return expectedDir;
+    }
+
+    throw new Error(`Latest result directory not found for testCase ${testCaseName}`);
+  }
+
+  private readJsonFile<T>(filePath: string, fallback: T): T {
+    if (!fs.existsSync(filePath)) {
+      return fallback;
+    }
+
+    const content = fs.readFileSync(filePath, 'utf8');
+    if (!content.trim()) {
+      return fallback;
+    }
+
+    return JSON.parse(content) as T;
   }
 }
 

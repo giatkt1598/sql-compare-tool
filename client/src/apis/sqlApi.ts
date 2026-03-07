@@ -66,4 +66,39 @@ export const sqlApi = {
       method: 'POST',
       body: JSON.stringify({ testCaseId, draft }),
     }),
+  getLatestTestCaseResult: (testCaseId: string) =>
+    request<{
+      testCaseId: string;
+      profileId: string;
+      executionCount: number;
+      executionTime: string | null;
+      status: 'success' | 'failed' | 'running' | 'error' | null;
+      error: string | null;
+      oldRows: Array<Record<string, unknown>>;
+      newRows: Array<Record<string, unknown>>;
+      diffPayload: {
+        summary: {
+          executionTime: string;
+          oldCount: number;
+          newCount: number;
+          differenceCount: number;
+          onlyInOldCount: number;
+          onlyInNewCount: number;
+          changedCount: number;
+          matched: boolean;
+        };
+        differences: Array<{
+          index: number;
+          type: 'changed' | 'onlyInOld' | 'onlyInNew';
+          oldRecord: Record<string, unknown> | null;
+          newRecord: Record<string, unknown> | null;
+        }>;
+      };
+      files: {
+        runDir: string;
+        oldResultPath: string;
+        newResultPath: string;
+        diffResultPath: string;
+      };
+    }>(`${API_SQL_URL}/test-cases/${testCaseId}/latest-result`),
 };

@@ -35,6 +35,10 @@ const router = express.Router();
  *         description: Connection failed or invalid input
  */
 router.post('/test-connection', SqlController.testConnection.bind(SqlController));
+router.get(
+  '/test-cases/:testCaseId/latest-result',
+  SqlController.getLatestTestCaseResult.bind(SqlController)
+);
 /**
  * @swagger
  * /api/sql/run-test-case:

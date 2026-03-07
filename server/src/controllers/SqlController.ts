@@ -64,6 +64,30 @@ class SqlController {
       });
     }
   }
+
+  getLatestTestCaseResult(req: Request, res: Response): void {
+    try {
+      const testCaseId = String(req.params.testCaseId ?? '').trim();
+      if (!testCaseId) {
+        res.status(400).json({
+          success: false,
+          message: 'testCaseId is required',
+        });
+        return;
+      }
+
+      const result = SqlService.getLatestTestCaseResult(testCaseId);
+      res.status(200).json(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unexpected error';
+      const statusCode =
+        message.includes('not found') || message.includes('No execution result') ? 404 : 400;
+      res.status(statusCode).json({
+        success: false,
+        message,
+      });
+    }
+  }
 }
 
 export default new SqlController();

@@ -1,6 +1,7 @@
 import AddCircleOutlineOutlinedIcon from '@mui/icons-material/AddCircleOutlineOutlined';
 import ArrowBackOutlinedIcon from '@mui/icons-material/ArrowBackOutlined';
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import PlayArrowOutlinedIcon from '@mui/icons-material/PlayArrowOutlined';
 import TuneOutlinedIcon from '@mui/icons-material/TuneOutlined';
 import dayjs from 'dayjs';
@@ -98,7 +99,7 @@ function TestCasesPage() {
   };
 
   const handleRowClick = (item: TestCase) => {
-    navigate(`/profiles/${profileId}/test-cases/${item.id}`);
+    navigate(`/profiles/${profileId}/test-cases/${item.id}/results`);
   };
 
   const handleRunTestCase = async (item: TestCase) => {
@@ -245,6 +246,17 @@ function TestCasesPage() {
                       </TableCell>
                       <TableCell>{item.status ?? '-'}</TableCell>
                       <TableCell align="right">
+                        <Tooltip title="Edit">
+                          <IconButton
+                            color="default"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              navigate(`/profiles/${profileId}/test-cases/${item.id}/edit`);
+                            }}
+                          >
+                            <EditOutlinedIcon />
+                          </IconButton>
+                        </Tooltip>
                         <Tooltip title="Run">
                           <IconButton
                             color="primary"
