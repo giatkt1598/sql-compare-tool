@@ -67,6 +67,39 @@ class SqlController {
     }
   }
 
+  buildSqlQueryPreview(req: Request, res: Response): void {
+    try {
+      const testCaseId = String(req.body?.testCaseId ?? '').trim();
+      const draft = req.body?.draft as
+        | {
+            name?: string;
+            parameter?: string;
+            enabled?: boolean;
+            compareInOrder?: boolean;
+            parallelExecution?: boolean;
+          }
+        | undefined;
+
+      if (!testCaseId) {
+        res.status(400).json({
+          success: false,
+          message: 'testCaseId is required',
+        });
+        return;
+      }
+
+      const result = SqlService.buildSqlQueryPreview(testCaseId, draft);
+      res.status(200).json(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unexpected error';
+      const statusCode = message.includes('not found') ? 404 : 400;
+      res.status(statusCode).json({
+        success: false,
+        message,
+      });
+    }
+  }
+
   runManyTestCases(req: Request, res: Response): void {
     try {
       const profileId = String(req.body?.profileId ?? '').trim();

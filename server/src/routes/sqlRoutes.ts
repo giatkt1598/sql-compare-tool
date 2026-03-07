@@ -70,6 +70,33 @@ router.get(
  *         description: TestCase or Profile not found
  */
 router.post('/run-test-case', SqlController.runTestCase.bind(SqlController));
+/**
+ * @swagger
+ * /api/sql/build-test-case-query:
+ *   post:
+ *     summary: Build preview SQL for one test case
+ *     description: Read old and new SQL files and replace placeholders with the current parameter draft without executing the queries.
+ *     tags:
+ *       - SQL
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/SqlRunTestCaseRequest'
+ *     responses:
+ *       200:
+ *         description: Preview SQL built successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SqlBuildTestCaseQueryResponse'
+ *       400:
+ *         description: Invalid input
+ *       404:
+ *         description: TestCase or Profile not found
+ */
+router.post('/build-test-case-query', SqlController.buildSqlQueryPreview.bind(SqlController));
 router.post('/run-many-test-cases', SqlController.runManyTestCases.bind(SqlController));
 
 /**
@@ -207,6 +234,27 @@ router.post('/run-many-test-cases', SqlController.runManyTestCases.bind(SqlContr
  *               type: integer
  *             matched:
  *               type: boolean
+ *
+ *     SqlBuildTestCaseQueryResponse:
+ *       type: object
+ *       properties:
+ *         testCaseId:
+ *           type: string
+ *         profileId:
+ *           type: string
+ *         profileName:
+ *           type: string
+ *         sqlProvider:
+ *           type: string
+ *           enum: [SqlServer, Postgres]
+ *         oldSqlFilePath:
+ *           type: string
+ *         newSqlFilePath:
+ *           type: string
+ *         oldSql:
+ *           type: string
+ *         newSql:
+ *           type: string
  */
 
 export default router;

@@ -71,6 +71,17 @@ interface RunTestCaseDraft {
   parallelExecution?: boolean;
 }
 
+interface BuildSqlQueryPreviewResult {
+  testCaseId: string;
+  profileId: string;
+  profileName: string;
+  sqlProvider: SqlProvider;
+  oldSqlFilePath: string;
+  newSqlFilePath: string;
+  oldSql: string;
+  newSql: string;
+}
+
 interface RunTestCaseOptions {
   source?: 'manual' | 'auto';
 }
@@ -411,6 +422,40 @@ class SqlService {
     }
   }
 
+  buildSqlQueryPreview(
+    testCaseId: string,
+    draft?: RunTestCaseDraft
+  ): BuildSqlQueryPreviewResult {
+    const testCase = TestCaseRepository.getById(testCaseId);
+    if (!testCase) {
+      throw new Error(`TestCase with ID ${testCaseId} not found`);
+    }
+
+    const profile = ProfileRepository.getById(testCase.profileId);
+    if (!profile) {
+      throw new Error(`Profile with ID ${testCase.profileId} not found`);
+    }
+
+    const oldSql = this.readSqlFile(profile.oldSqlFilePath, 'oldSqlFilePath');
+    const newSql = this.readSqlFile(profile.newSqlFilePath, 'newSqlFilePath');
+    const rawParams = this.parseTestCaseParameterObject(draft?.parameter ?? testCase.parameter);
+    const sqlParameters = SqlParameterRepository.getByProfileId(profile.id).sort(
+      (a, b) => a.index - b.index
+    );
+    const boundParams = this.mapBoundParameters(sqlParameters, rawParams);
+
+    return {
+      testCaseId: testCase.id,
+      profileId: profile.id,
+      profileName: profile.name,
+      sqlProvider: profile.sqlProvider,
+      oldSqlFilePath: profile.oldSqlFilePath,
+      newSqlFilePath: profile.newSqlFilePath,
+      oldSql: this.renderPreviewSql(profile.sqlProvider, oldSql, sqlParameters, boundParams),
+      newSql: this.renderPreviewSql(profile.sqlProvider, newSql, sqlParameters, boundParams),
+    };
+  }
+
   runManyTestCases(options: RunManyTestCasesOptions): {
     profileId: string;
     totalSelected: number;
@@ -635,6 +680,70 @@ class SqlService {
     }
 
     return String(value);
+  }
+
+  private renderPreviewSql(
+    sqlProvider: SqlProvider,
+    queryText: string,
+    sqlParameters: Array<Pick<SqlParameterData, 'name' | 'index' | 'dataType'>>,
+    boundParams: Record<string, unknown>
+  ): string {
+    let previewText =
+      sqlProvider === 'SqlServer'
+        ? this.normalizeSqlServerQuery(queryText, sqlParameters)
+        : queryText;
+
+    for (const parameter of [...sqlParameters].sort((a, b) => a.index - b.index)) {
+      const escapedName = this.escapeRegex(parameter.name);
+      const literal = this.toSqlLiteral(boundParams[parameter.name], parameter.dataType, sqlProvider);
+
+      if (sqlProvider === 'SqlServer') {
+        previewText = previewText.replace(new RegExp(`@${escapedName}\\b`, 'g'), literal);
+        continue;
+      }
+
+      previewText = previewText.replace(new RegExp(`@${escapedName}\\b`, 'g'), literal);
+      previewText = previewText.replace(new RegExp(`:${escapedName}\\b`, 'g'), literal);
+      previewText = previewText.replace(
+        new RegExp(`\\{\\{\\s*${escapedName}\\s*\\}\\}`, 'g'),
+        literal
+      );
+    }
+
+    return previewText;
+  }
+
+  private toSqlLiteral(
+    value: unknown,
+    dataType: SqlParameterDataType,
+    sqlProvider: SqlProvider
+  ): string {
+    if (value === null || value === undefined) {
+      return 'NULL';
+    }
+
+    if (dataType === 'number') {
+      return String(value);
+    }
+
+    if (dataType === 'boolean') {
+      if (sqlProvider === 'SqlServer') {
+        return value ? '1' : '0';
+      }
+      return value ? 'TRUE' : 'FALSE';
+    }
+
+    if (dataType === 'json') {
+      const jsonText =
+        typeof value === 'string' ? value : JSON.stringify(value);
+      return `'${this.escapeSqlString(jsonText)}'`;
+    }
+
+    return `'${this.escapeSqlString(String(value))}'`;
+  }
+
+  private escapeSqlString(value: string): string {
+    return value.replace(/'/g, "''");
   }
 
   private async executeQuery(

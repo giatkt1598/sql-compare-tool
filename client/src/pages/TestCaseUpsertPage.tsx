@@ -1,5 +1,6 @@
 import ArrowBackOutlinedIcon from '@mui/icons-material/ArrowBackOutlined';
 import HelpOutlineOutlinedIcon from '@mui/icons-material/HelpOutlineOutlined';
+import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import PlayArrowOutlinedIcon from '@mui/icons-material/PlayArrowOutlined';
 import {
   Alert,
@@ -7,10 +8,15 @@ import {
   Button,
   Checkbox,
   CircularProgress,
+  Dialog,
+  DialogContent,
+  DialogTitle,
   FormControlLabel,
   Paper,
   Snackbar,
   Stack,
+  Tab,
+  Tabs,
   TextField,
   Tooltip,
   Typography,
@@ -31,6 +37,14 @@ interface ToastState {
   open: boolean;
   message: string;
   severity: 'success' | 'error';
+}
+
+interface QueryPreviewState {
+  sqlProvider: string;
+  oldSql: string;
+  newSql: string;
+  oldSqlFilePath: string;
+  newSqlFilePath: string;
 }
 
 function buildSampleJson(parameters: SqlParameter[]): string {
@@ -60,9 +74,13 @@ function TestCaseUpsertPage() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
+  const [isBuildingQuery, setIsBuildingQuery] = useState(false);
   const [formValue, setFormValue] = useState<TestCaseFormInput>(defaultTestCaseFormInput);
   const [existingTestCase, setExistingTestCase] = useState<TestCase | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isQueryDialogOpen, setIsQueryDialogOpen] = useState(false);
+  const [queryTab, setQueryTab] = useState<'old' | 'new'>('old');
+  const [queryPreview, setQueryPreview] = useState<QueryPreviewState | null>(null);
   const [toast, setToast] = useState<ToastState>({
     open: false,
     message: '',
@@ -242,6 +260,45 @@ function TestCaseUpsertPage() {
     }
   };
 
+  const handleBuildSqlQuery = async () => {
+    if (!testCaseId) {
+      setError('Only saved test cases can build SQL preview');
+      return;
+    }
+
+    setIsBuildingQuery(true);
+    setError(null);
+    try {
+      const result = await sqlApi.buildTestCaseQuery(testCaseId, {
+        name: formValue.name,
+        parameter: formValue.parameter,
+        enabled: formValue.enabled,
+        compareInOrder: formValue.compareInOrder,
+        parallelExecution: formValue.parallelExecution,
+      });
+
+      setQueryPreview({
+        sqlProvider: result.sqlProvider,
+        oldSql: result.oldSql,
+        newSql: result.newSql,
+        oldSqlFilePath: result.oldSqlFilePath,
+        newSqlFilePath: result.newSqlFilePath,
+      });
+      setQueryTab('old');
+      setIsQueryDialogOpen(true);
+    } catch (buildError) {
+      const message = buildError instanceof Error ? buildError.message : 'Build SQL query failed';
+      setError(message);
+      setToast({
+        open: true,
+        message,
+        severity: 'error',
+      });
+    } finally {
+      setIsBuildingQuery(false);
+    }
+  };
+
   if (!profileId) {
     return <Alert severity="error">profileId is required</Alert>;
   }
@@ -391,15 +448,26 @@ function TestCaseUpsertPage() {
             <Stack direction="row" spacing={1.5} justifyContent="space-between">
               <Stack direction="row" spacing={1.5}>
                 {isEditMode ? (
-                  <Button
-                    variant="outlined"
-                    startIcon={<PlayArrowOutlinedIcon />}
-                    onClick={() => void handleRun()}
-                    disabled={isSaving || isRunning}
-                    sx={{ minWidth: 160 }}
-                  >
-                    {isRunning ? 'Running...' : 'Run Test Case'}
-                  </Button>
+                  <>
+                    <Button
+                      variant="outlined"
+                      startIcon={<PlayArrowOutlinedIcon />}
+                      onClick={() => void handleRun()}
+                      disabled={isSaving || isRunning || isBuildingQuery}
+                      sx={{ minWidth: 160 }}
+                    >
+                      {isRunning ? 'Running...' : 'Run Test Case'}
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      startIcon={<VisibilityOutlinedIcon />}
+                      onClick={() => void handleBuildSqlQuery()}
+                      disabled={isSaving || isRunning || isBuildingQuery}
+                      sx={{ minWidth: 180 }}
+                    >
+                      {isBuildingQuery ? 'Building...' : 'Preview SQL Query'}
+                    </Button>
+                  </>
                 ) : null}
               </Stack>
               <Stack direction="row" spacing={1.5}>
@@ -412,7 +480,7 @@ function TestCaseUpsertPage() {
                 <Button
                   variant="contained"
                   onClick={() => void handleSubmit()}
-                  disabled={isSaving || isRunning}
+                  disabled={isSaving || isRunning || isBuildingQuery}
                 >
                   {isEditMode ? 'Save changes' : 'Create test case'}
                 </Button>
@@ -421,6 +489,75 @@ function TestCaseUpsertPage() {
           </Stack>
         </Box>
       </Paper>
+
+      <Dialog
+        open={isQueryDialogOpen}
+        onClose={() => setIsQueryDialogOpen(false)}
+        fullWidth
+        maxWidth="lg"
+        slotProps={{
+          paper: {
+            sx: {
+              height: '80vh',
+            },
+          },
+        }}
+      >
+        <DialogTitle>Preview SQL Query</DialogTitle>
+        <DialogContent
+          dividers
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            minHeight: 0,
+          }}
+        >
+          <Tabs value={queryTab} onChange={(_event, value: 'old' | 'new') => setQueryTab(value)}>
+            <Tab label="Old SQL" value="old" />
+            <Tab label="New SQL" value="new" />
+          </Tabs>
+
+          <Stack spacing={1.5} sx={{ mt: 2, flex: 1, minHeight: 0 }}>
+            <Typography variant="body2" color="text.secondary">
+              {queryTab === 'old'
+                ? (queryPreview?.oldSqlFilePath ?? '')
+                : (queryPreview?.newSqlFilePath ?? '')}
+
+              {queryPreview ? ` (${queryPreview.sqlProvider})` : ''}
+            </Typography>
+
+            <TextField
+              value={
+                queryTab === 'old' ? (queryPreview?.oldSql ?? '') : (queryPreview?.newSql ?? '')
+              }
+              onChange={(event) =>
+                setQueryPreview((current) =>
+                  current
+                    ? queryTab === 'old'
+                      ? { ...current, oldSql: event.target.value }
+                      : { ...current, newSql: event.target.value }
+                    : current
+                )
+              }
+              multiline
+              fullWidth
+              sx={{
+                flex: 1,
+                '& .MuiInputBase-root': {
+                  height: '100%',
+                  alignItems: 'stretch',
+                },
+                '& .MuiInputBase-input': {
+                  height: '100% !important',
+                  overflow: 'auto !important',
+                  fontFamily: 'Consolas, Monaco, monospace',
+                  fontSize: 13,
+                },
+              }}
+            />
+          </Stack>
+        </DialogContent>
+      </Dialog>
 
       <Snackbar
         open={toast.open}

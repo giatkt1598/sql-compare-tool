@@ -74,6 +74,29 @@ export const sqlApi = {
       method: 'POST',
       body: JSON.stringify({ testCaseId, draft }),
     }),
+  buildTestCaseQuery: (
+    testCaseId: string,
+    draft?: {
+      name?: string;
+      parameter?: string;
+      enabled?: boolean;
+      compareInOrder?: boolean;
+      parallelExecution?: boolean;
+    }
+  ) =>
+    request<{
+      testCaseId: string;
+      profileId: string;
+      profileName: string;
+      sqlProvider: string;
+      oldSqlFilePath: string;
+      newSqlFilePath: string;
+      oldSql: string;
+      newSql: string;
+    }>(`${API_SQL_URL}/build-test-case-query`, {
+      method: 'POST',
+      body: JSON.stringify({ testCaseId, draft }),
+    }),
   runManyTestCases: (payload: {
     profileId: string;
     scope: 'all' | 'enabled';
