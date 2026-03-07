@@ -1,30 +1,25 @@
 import ArrowBackOutlinedIcon from '@mui/icons-material/ArrowBackOutlined';
-import HelpOutlineOutlinedIcon from '@mui/icons-material/HelpOutlineOutlined';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import PlayArrowOutlinedIcon from '@mui/icons-material/PlayArrowOutlined';
 import {
   Alert,
   Box,
   Button,
-  Checkbox,
   CircularProgress,
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  FormControlLabel,
   Paper,
   Snackbar,
   Stack,
-  Tab,
-  Tabs,
   TextField,
-  Tooltip,
   Typography,
 } from '@mui/material';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { sqlApi } from '../apis/sqlApi';
 import { sqlParameterApi } from '../apis/sqlParameterApi';
+import SqlQueryPreviewDialog, {
+  type SqlQueryPreviewDialogValue,
+} from '../components/test-cases/SqlQueryPreviewDialog';
+import TestCaseFormOptions from '../components/test-cases/TestCaseFormOptions';
 import { testCaseApi } from '../apis/testCaseApi';
 import type { SqlParameter } from '../models/sqlParameter';
 import {
@@ -37,14 +32,6 @@ interface ToastState {
   open: boolean;
   message: string;
   severity: 'success' | 'error';
-}
-
-interface QueryPreviewState {
-  sqlProvider: string;
-  oldSql: string;
-  newSql: string;
-  oldSqlFilePath: string;
-  newSqlFilePath: string;
 }
 
 function buildSampleJson(parameters: SqlParameter[]): string {
@@ -80,7 +67,7 @@ function TestCaseUpsertPage() {
   const [error, setError] = useState<string | null>(null);
   const [isQueryDialogOpen, setIsQueryDialogOpen] = useState(false);
   const [queryTab, setQueryTab] = useState<'old' | 'new'>('old');
-  const [queryPreview, setQueryPreview] = useState<QueryPreviewState | null>(null);
+  const [queryPreview, setQueryPreview] = useState<SqlQueryPreviewDialogValue | null>(null);
   const [toast, setToast] = useState<ToastState>({
     open: false,
     message: '',
@@ -158,23 +145,12 @@ function TestCaseUpsertPage() {
     setError(null);
     try {
       if (isEditMode && testCaseId) {
-        const updatePayload = {
-          profileId: existingTestCase.profileId,
-          orderIndex: existingTestCase.orderIndex,
+        await testCaseApi.update(testCaseId, {
           name: formValue.name,
           parameter: formValue.parameter,
           compareInOrder: formValue.compareInOrder,
           parallelExecution: formValue.parallelExecution,
-          autoRunWhenSqlChanges: existingTestCase.autoRunWhenSqlChanges,
-          executionCount: existingTestCase.executionCount,
-          status: existingTestCase.status,
-          error: existingTestCase.error,
-          executionDuration: existingTestCase.executionDuration,
-          executionTime: existingTestCase.executionTime,
           enabled: formValue.enabled,
-        };
-        await testCaseApi.update(testCaseId, {
-          ...updatePayload,
         });
       } else {
         await testCaseApi.create({
@@ -378,72 +354,7 @@ function TestCaseUpsertPage() {
               }
               helperText="JSON string for sql parameters"
             />
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={formValue.compareInOrder}
-                      onChange={(event) =>
-                        setFormValue((current) => ({
-                          ...current,
-                          compareInOrder: event.target.checked,
-                        }))
-                      }
-                    />
-                  }
-                  label="Compare in order"
-                  sx={{ mr: 0.5 }}
-                />
-                <Tooltip title="When enabled, the result comparison keeps the original row order. When disabled, the tool compares records without caring about row order.">
-                  <HelpOutlineOutlinedIcon
-                    fontSize="small"
-                    color="action"
-                    sx={{ cursor: 'help' }}
-                  />
-                </Tooltip>
-              </Box>
-
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={formValue.parallelExecution}
-                      onChange={(event) =>
-                        setFormValue((current) => ({
-                          ...current,
-                          parallelExecution: event.target.checked,
-                        }))
-                      }
-                    />
-                  }
-                  label="Parallel execution"
-                  sx={{ mr: 0.5 }}
-                />
-                <Tooltip title="Run old SQL and new SQL at the same time to reduce total execution time. This is faster, but it increases database load because both queries run concurrently.">
-                  <HelpOutlineOutlinedIcon
-                    fontSize="small"
-                    color="action"
-                    sx={{ cursor: 'help' }}
-                  />
-                </Tooltip>
-              </Box>
-
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={formValue.enabled}
-                    onChange={(event) =>
-                      setFormValue((current) => ({
-                        ...current,
-                        enabled: event.target.checked,
-                      }))
-                    }
-                  />
-                }
-                label="Enabled"
-              />
-            </Box>
+            <TestCaseFormOptions value={formValue} onChange={setFormValue} />
 
             <Stack direction="row" spacing={1.5} justifyContent="space-between">
               <Stack direction="row" spacing={1.5}>
@@ -490,74 +401,14 @@ function TestCaseUpsertPage() {
         </Box>
       </Paper>
 
-      <Dialog
+      <SqlQueryPreviewDialog
         open={isQueryDialogOpen}
+        value={queryPreview}
+        activeTab={queryTab}
         onClose={() => setIsQueryDialogOpen(false)}
-        fullWidth
-        maxWidth="lg"
-        slotProps={{
-          paper: {
-            sx: {
-              height: '80vh',
-            },
-          },
-        }}
-      >
-        <DialogTitle>Preview SQL Query</DialogTitle>
-        <DialogContent
-          dividers
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            minHeight: 0,
-          }}
-        >
-          <Tabs value={queryTab} onChange={(_event, value: 'old' | 'new') => setQueryTab(value)}>
-            <Tab label="Old SQL" value="old" />
-            <Tab label="New SQL" value="new" />
-          </Tabs>
-
-          <Stack spacing={1.5} sx={{ mt: 2, flex: 1, minHeight: 0 }}>
-            <Typography variant="body2" color="text.secondary">
-              {queryTab === 'old'
-                ? (queryPreview?.oldSqlFilePath ?? '')
-                : (queryPreview?.newSqlFilePath ?? '')}
-
-              {queryPreview ? ` (${queryPreview.sqlProvider})` : ''}
-            </Typography>
-
-            <TextField
-              value={
-                queryTab === 'old' ? (queryPreview?.oldSql ?? '') : (queryPreview?.newSql ?? '')
-              }
-              onChange={(event) =>
-                setQueryPreview((current) =>
-                  current
-                    ? queryTab === 'old'
-                      ? { ...current, oldSql: event.target.value }
-                      : { ...current, newSql: event.target.value }
-                    : current
-                )
-              }
-              multiline
-              fullWidth
-              sx={{
-                flex: 1,
-                '& .MuiInputBase-root': {
-                  height: '100%',
-                  alignItems: 'stretch',
-                },
-                '& .MuiInputBase-input': {
-                  height: '100% !important',
-                  overflow: 'auto !important',
-                  fontFamily: 'Consolas, Monaco, monospace',
-                  fontSize: 13,
-                },
-              }}
-            />
-          </Stack>
-        </DialogContent>
-      </Dialog>
+        onTabChange={setQueryTab}
+        onValueChange={setQueryPreview}
+      />
 
       <Snackbar
         open={toast.open}
