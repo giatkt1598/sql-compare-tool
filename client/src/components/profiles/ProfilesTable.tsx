@@ -1,7 +1,8 @@
-import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
-import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
+import MoreVertOutlinedIcon from '@mui/icons-material/MoreVertOutlined';
 import {
   IconButton,
+  Menu,
+  MenuItem,
   Paper,
   Table,
   TableBody,
@@ -9,9 +10,9 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Tooltip,
   Typography,
 } from '@mui/material';
+import { type MouseEvent, useState } from 'react';
 import type { Profile } from '../../models/profile';
 
 interface ProfilesTableProps {
@@ -19,11 +20,29 @@ interface ProfilesTableProps {
   onOpenTestCases: (profile: Profile) => void;
   onEdit: (profile: Profile) => void;
   onDelete: (profile: Profile) => void;
-  onParameters: (profile: Profile) => void;
+  onBackup: (profile: Profile) => void;
 }
 
-function ProfilesTable(props: ProfilesTableProps) {
-  const { profiles, onOpenTestCases, onEdit, onDelete } = props;
+function ProfilesTable({
+  profiles,
+  onOpenTestCases,
+  onEdit,
+  onDelete,
+  onBackup,
+}: ProfilesTableProps) {
+  const [menuAnchorEl, setMenuAnchorEl] = useState<HTMLElement | null>(null);
+  const [activeProfile, setActiveProfile] = useState<Profile | null>(null);
+
+  const handleMenuOpen = (event: MouseEvent<HTMLElement>, profile: Profile) => {
+    event.stopPropagation();
+    setMenuAnchorEl(event.currentTarget);
+    setActiveProfile(profile);
+  };
+
+  const handleMenuClose = () => {
+    setMenuAnchorEl(null);
+    setActiveProfile(null);
+  };
 
   if (profiles.length === 0) {
     return (
@@ -34,63 +53,84 @@ function ProfilesTable(props: ProfilesTableProps) {
   }
 
   return (
-    <TableContainer component={Paper}>
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell>Name</TableCell>
-            <TableCell>Provider</TableCell>
-            <TableCell>DB Host</TableCell>
-            <TableCell>Updated</TableCell>
-            <TableCell align="right">Actions</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {profiles.map((profile) => (
-            <TableRow
-              key={profile.id}
-              hover
-              onClick={() => onOpenTestCases(profile)}
-              sx={{ cursor: 'pointer' }}
-            >
-              <TableCell>
-                <Typography variant="subtitle2">{profile.name}</Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {profile.description || 'No description'}
-                </Typography>
-              </TableCell>
-              <TableCell>{profile.sqlProvider}</TableCell>
-              <TableCell>{profile.sqlConnection.host}</TableCell>
-              <TableCell>{new Date(profile.updatedAt).toLocaleString()}</TableCell>
-              <TableCell align="right">
-                <Tooltip title="Edit">
-                  <IconButton
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onEdit(profile);
-                    }}
-                    color="primary"
-                  >
-                    <EditOutlinedIcon />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip title="Delete">
-                  <IconButton
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onDelete(profile);
-                    }}
-                    color="error"
-                  >
-                    <DeleteOutlineOutlinedIcon />
-                  </IconButton>
-                </Tooltip>
-              </TableCell>
+    <>
+      <TableContainer component={Paper}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Name</TableCell>
+              <TableCell>Provider</TableCell>
+              <TableCell>DB Host</TableCell>
+              <TableCell>Updated</TableCell>
+              <TableCell align="right">Actions</TableCell>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
+          </TableHead>
+          <TableBody>
+            {profiles.map((profile) => (
+              <TableRow
+                key={profile.id}
+                hover
+                onClick={() => onOpenTestCases(profile)}
+                sx={{ cursor: 'pointer' }}
+              >
+                <TableCell>
+                  <Typography variant="subtitle2">{profile.name}</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {profile.description || 'No description'}
+                  </Typography>
+                </TableCell>
+                <TableCell>{profile.sqlProvider}</TableCell>
+                <TableCell>{profile.sqlConnection.host}</TableCell>
+                <TableCell>{new Date(profile.updatedAt).toLocaleString()}</TableCell>
+                <TableCell align="right">
+                  <IconButton onClick={(event) => handleMenuOpen(event, profile)} color="default">
+                    <MoreVertOutlinedIcon />
+                  </IconButton>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+
+      <Menu
+        anchorEl={menuAnchorEl}
+        open={Boolean(menuAnchorEl)}
+        onClose={handleMenuClose}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <MenuItem
+          onClick={() => {
+            if (activeProfile) {
+              onEdit(activeProfile);
+            }
+            handleMenuClose();
+          }}
+        >
+          Edit
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            if (activeProfile) {
+              onDelete(activeProfile);
+            }
+            handleMenuClose();
+          }}
+        >
+          Delete
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            if (activeProfile) {
+              onBackup(activeProfile);
+            }
+            handleMenuClose();
+          }}
+        >
+          Backup
+        </MenuItem>
+      </Menu>
+    </>
   );
 }
 

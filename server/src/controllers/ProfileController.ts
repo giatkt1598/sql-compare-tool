@@ -115,6 +115,45 @@ class ProfileController {
     }
   }
 
+  backupProfile(req: Request, res: Response): void {
+    try {
+      const id = String(req.params.id);
+      const { fileName, buffer } = ProfileService.backupProfile(id);
+      res.setHeader('Content-Type', 'application/zip');
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+      res.status(200).send(buffer);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unexpected error';
+      const statusCode = message.includes('not found') ? 404 : 400;
+      res.status(statusCode).json({
+        success: false,
+        message,
+      });
+    }
+  }
+
+  restoreProfile(req: Request, res: Response): void {
+    try {
+      const zipBuffer = Buffer.isBuffer(req.body) ? req.body : Buffer.from([]);
+      if (zipBuffer.length === 0) {
+        res.status(400).json({
+          success: false,
+          message: 'Backup zip file is required',
+        });
+        return;
+      }
+
+      const result = ProfileService.restoreProfileBackup(zipBuffer);
+      res.status(200).json(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unexpected error';
+      res.status(400).json({
+        success: false,
+        message,
+      });
+    }
+  }
+
   getByProvider(req: Request, res: Response): void {
     try {
       const provider = req.params.provider as SqlProvider;

@@ -37,4 +37,40 @@ export const profileApi = {
     request<{ message: string; id: string }>(`${API_PROFILE_URL}/${id}`, {
       method: 'DELETE',
     }),
+  backup: async (id: string) => {
+    const response = await fetch(`${API_PROFILE_URL}/${id}/backup`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || 'Backup profile failed');
+    }
+
+    return {
+      blob: await response.blob(),
+      fileName:
+        response.headers
+          .get('Content-Disposition')
+          ?.match(/filename="(.+)"/)?.[1] ?? `profile-${id}.zip`,
+    };
+  },
+  restore: async (file: File) => {
+    const response = await fetch(`${API_PROFILE_URL}/restore`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': file.type || 'application/zip',
+      },
+      body: file,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || 'Restore profile failed');
+    }
+
+    return (await response.json()) as {
+      message: string;
+      profileId: string;
+      restoredProfileName: string;
+      replacedExisting: boolean;
+    };
+  },
 };

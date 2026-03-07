@@ -197,6 +197,15 @@ router.get('/', ProfileController.getAllProfiles.bind(ProfileController));
  *         description: Profile name already exists
  */
 router.post('/', ProfileController.createProfile.bind(ProfileController));
+router.post(
+  '/restore',
+  express.raw({
+    type: ['application/zip', 'application/octet-stream'],
+    limit: '200mb',
+  }),
+  ProfileController.restoreProfile.bind(ProfileController)
+);
+router.get('/:id/backup', ProfileController.backupProfile.bind(ProfileController));
 
 /**
  * @swagger
