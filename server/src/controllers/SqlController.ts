@@ -42,6 +42,7 @@ class SqlController {
             name?: string;
             parameter?: string;
             enabled?: boolean;
+            compareInOrder?: boolean;
           }
         | undefined;
 
@@ -87,6 +88,20 @@ class SqlController {
         message,
       });
     }
+  }
+
+  streamTestCaseEvents(req: Request, res: Response): void {
+    const testCaseId = String(req.params.testCaseId ?? '').trim();
+    if (!testCaseId) {
+      res.status(400).json({
+        success: false,
+        message: 'testCaseId is required',
+      });
+      return;
+    }
+
+    const cleanup = SqlService.subscribeToTestCaseEvents(testCaseId, res);
+    req.on('close', cleanup);
   }
 }
 

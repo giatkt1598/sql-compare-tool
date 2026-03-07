@@ -7,6 +7,7 @@ import sqlRoutes from './routes/sqlRoutes';
 import sqlParameterRoutes from './routes/sqlParameterRoutes';
 import testCaseRoutes from './routes/testCaseRoutes';
 import errorHandler from './middleware/errorHandler';
+import TestCaseAutoRunService from './services/TestCaseAutoRunService';
 
 const app = express();
 const PORT = Number(process.env.PORT || 5000);
@@ -52,6 +53,8 @@ app.use((_req: Request, res: Response) => {
     message: 'Route not found',
   });
 });
+
+TestCaseAutoRunService.syncAll();
 
 app.listen(PORT, () => {
   console.log(`

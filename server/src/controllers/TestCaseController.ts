@@ -7,6 +7,12 @@ import {
 } from '../types/testCase';
 
 class TestCaseController {
+  private omitUndefined<T extends Record<string, unknown>>(value: T): Partial<T> {
+    return Object.fromEntries(
+      Object.entries(value).filter(([, fieldValue]) => fieldValue !== undefined)
+    ) as Partial<T>;
+  }
+
   getAll(_req: Request, res: Response): void {
     try {
       const testCases = TestCaseService.getAll();
@@ -60,6 +66,7 @@ class TestCaseController {
         name?: string;
         parameter?: string;
         compareInOrder?: boolean;
+        autoRunWhenSqlChanges?: boolean;
         executionCount?: number;
         status?: string | null;
         error?: string | null;
@@ -106,6 +113,7 @@ class TestCaseController {
         name: payload.name,
         parameter: payload.parameter ?? '',
         compareInOrder: payload.compareInOrder ?? false,
+        autoRunWhenSqlChanges: payload.autoRunWhenSqlChanges ?? false,
         executionCount,
         status: (payload.status ?? null) as NullableTestCaseStatus,
         error: payload.error ?? null,
@@ -135,6 +143,7 @@ class TestCaseController {
         name?: string;
         parameter?: string;
         compareInOrder?: boolean;
+        autoRunWhenSqlChanges?: boolean;
         executionCount?: number;
         status?: string | null;
         error?: string | null;
@@ -160,12 +169,13 @@ class TestCaseController {
         return;
       }
 
-      const updated = TestCaseService.update(id, {
+      const updatePayload = this.omitUndefined({
         profileId: payload.profileId,
         orderIndex: payload.orderIndex,
         name: payload.name,
         parameter: payload.parameter,
         compareInOrder: payload.compareInOrder,
+        autoRunWhenSqlChanges: payload.autoRunWhenSqlChanges,
         executionCount: payload.executionCount,
         status:
           payload.status !== undefined ? (payload.status as NullableTestCaseStatus) : undefined,
@@ -175,6 +185,8 @@ class TestCaseController {
         executionTime: payload.executionTime,
         enabled: payload.enabled,
       });
+
+      const updated = TestCaseService.update(id, updatePayload);
       res.status(200).json(updated);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unexpected error';

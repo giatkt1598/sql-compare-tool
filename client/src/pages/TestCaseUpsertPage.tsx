@@ -92,6 +92,7 @@ function TestCaseUpsertPage() {
             parameter: testCase.parameter || buildSampleJson(parameters),
             enabled: testCase.enabled,
             compareInOrder: testCase.compareInOrder,
+            autoRunWhenSqlChanges: testCase.autoRunWhenSqlChanges,
           });
         } else {
           setExistingTestCase({
@@ -101,6 +102,7 @@ function TestCaseUpsertPage() {
             name: '',
             parameter: '',
             compareInOrder: false,
+            autoRunWhenSqlChanges: false,
             executionCount: 0,
             status: null,
             error: null,
@@ -141,6 +143,7 @@ function TestCaseUpsertPage() {
           name: formValue.name,
           parameter: formValue.parameter,
           compareInOrder: formValue.compareInOrder,
+          autoRunWhenSqlChanges: existingTestCase.autoRunWhenSqlChanges,
           executionCount: existingTestCase.executionCount,
           status: existingTestCase.status,
           error: existingTestCase.error,
@@ -158,6 +161,7 @@ function TestCaseUpsertPage() {
           name: formValue.name,
           parameter: formValue.parameter,
           compareInOrder: formValue.compareInOrder,
+          autoRunWhenSqlChanges: false,
           executionCount: 0,
           enabled: formValue.enabled,
           status: null,

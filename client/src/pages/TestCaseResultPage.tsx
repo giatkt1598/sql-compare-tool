@@ -5,8 +5,10 @@ import {
   Alert,
   Box,
   Button,
+  Checkbox,
   Chip,
   CircularProgress,
+  FormControlLabel,
   Paper,
   Snackbar,
   Stack,
@@ -23,6 +25,7 @@ import {
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { sqlApi } from '../apis/sqlApi';
+import { testCaseApi } from '../apis/testCaseApi';
 import dayjs from 'dayjs';
 
 type QueryRow = Record<string, unknown>;
@@ -37,6 +40,10 @@ interface ResultDiffItem {
 interface LatestTestCaseResult {
   testCaseId: string;
   profileId: string;
+  name: string;
+  enabled: boolean;
+  compareInOrder: boolean;
+  autoRunWhenSqlChanges: boolean;
   executionCount: number;
   executionTime: string | null;
   executionDuration: number | null;
@@ -64,6 +71,16 @@ interface ToastState {
   open: boolean;
   message: string;
   severity: 'success' | 'error';
+}
+
+interface TestCaseStreamEvent {
+  type: 'connected' | 'running' | 'completed' | 'error';
+  testCaseId: string;
+  status?: 'success' | 'failed' | 'running' | 'error' | null;
+  executionCount?: number;
+  executionTime?: string | null;
+  message?: string;
+  source?: 'manual' | 'auto';
 }
 
 interface CombinedRow {
@@ -152,6 +169,7 @@ function TestCaseResultPage() {
   const [error, setError] = useState<string | null>(null);
   const [runError, setRunError] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState(false);
+  const [isAutoRunSaving, setIsAutoRunSaving] = useState(false);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(25);
   const [toast, setToast] = useState<ToastState>({
@@ -166,6 +184,7 @@ function TestCaseResultPage() {
     try {
       const result = await sqlApi.getLatestTestCaseResult(nextTestCaseId);
       setData(result);
+      setIsRunning(result.status === 'running');
       setPage(0);
     } catch (fetchError) {
       setError(fetchError instanceof Error ? fetchError.message : 'Load latest result failed');
@@ -182,6 +201,60 @@ function TestCaseResultPage() {
     }
 
     void fetchResult(testCaseId);
+  }, [testCaseId]);
+
+  useEffect(() => {
+    if (!testCaseId) {
+      return;
+    }
+
+    const eventSource = new EventSource(sqlApi.getTestCaseEventsUrl(testCaseId));
+    const handleStreamEvent = (event: MessageEvent<string>) => {
+      try {
+        const payload = JSON.parse(event.data) as TestCaseStreamEvent;
+
+        if (payload.type === 'running') {
+          setRunError(null);
+          setIsRunning(true);
+          setData((current) =>
+            current
+              ? {
+                  ...current,
+                  status: 'running',
+                  error: null,
+                  executionCount: payload.executionCount ?? current.executionCount,
+                  executionTime: payload.executionTime ?? current.executionTime,
+                }
+              : current
+          );
+          return;
+        }
+
+        if (payload.type === 'completed' || payload.type === 'error') {
+          setIsRunning(false);
+          if (payload.type === 'completed') {
+            setRunError(null);
+          } else if (payload.message) {
+            setRunError(payload.message);
+          }
+
+          void fetchResult(testCaseId);
+        }
+      } catch {
+        // Ignore malformed event payloads.
+      }
+    };
+
+    eventSource.addEventListener('running', handleStreamEvent);
+    eventSource.addEventListener('completed', handleStreamEvent);
+    eventSource.addEventListener('error', handleStreamEvent);
+
+    return () => {
+      eventSource.removeEventListener('running', handleStreamEvent);
+      eventSource.removeEventListener('completed', handleStreamEvent);
+      eventSource.removeEventListener('error', handleStreamEvent);
+      eventSource.close();
+    };
   }, [testCaseId]);
 
   if (!profileId || !testCaseId) {
@@ -231,6 +304,39 @@ function TestCaseResultPage() {
       );
     } finally {
       setIsRunning(false);
+    }
+  };
+
+  const handleAutoRunChange = async (checked: boolean) => {
+    if (!testCaseId) {
+      return;
+    }
+
+    setIsAutoRunSaving(true);
+    setRunError(null);
+    try {
+      const updated = await testCaseApi.update(testCaseId, {
+        autoRunWhenSqlChanges: checked,
+      });
+      setData((current) =>
+        current
+          ? {
+              ...current,
+              autoRunWhenSqlChanges: updated.autoRunWhenSqlChanges,
+            }
+          : current
+      );
+      setToast({
+        open: true,
+        message: checked ? 'Auto run enabled' : 'Auto run disabled',
+        severity: 'success',
+      });
+    } catch (updateError) {
+      setRunError(
+        updateError instanceof Error ? updateError.message : 'Update auto run setting failed'
+      );
+    } finally {
+      setIsAutoRunSaving(false);
     }
   };
 
@@ -313,15 +419,29 @@ function TestCaseResultPage() {
               </Typography>
 
               <Box sx={{ flexGrow: 1 }} />
-              <Button
-                variant="contained"
-                startIcon={<PlayArrowOutlinedIcon />}
-                onClick={() => void handleRunTestCase()}
-                disabled={isRunning}
-                sx={{ minWidth: 200 }}
-              >
-                {isRunning ? 'Test case is running...' : 'Run Test Case'}
-              </Button>
+              <Stack direction="row" spacing={1}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={data.autoRunWhenSqlChanges}
+                      onChange={(event) => void handleAutoRunChange(event.target.checked)}
+                      disabled={isAutoRunSaving}
+                      size="small"
+                    />
+                  }
+                  label="Auto run"
+                  sx={{ mr: 0 }}
+                />
+                <Button
+                  variant="contained"
+                  startIcon={<PlayArrowOutlinedIcon />}
+                  onClick={() => void handleRunTestCase()}
+                  disabled={isRunning || isAutoRunSaving}
+                  sx={{ minWidth: 200 }}
+                >
+                  {isRunning ? 'Test case is running...' : 'Run Test Case'}
+                </Button>
+              </Stack>
             </Stack>
             {latestRunError ? (
               <Alert severity="error" sx={{ mt: 2 }}>

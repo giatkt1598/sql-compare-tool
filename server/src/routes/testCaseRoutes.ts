@@ -7,7 +7,7 @@ router.get('/profile/:profileId', TestCaseController.getByProfileId.bind(TestCas
 router.get('/', TestCaseController.getAll.bind(TestCaseController));
 router.post('/', TestCaseController.create.bind(TestCaseController));
 router.get('/:id', TestCaseController.getById.bind(TestCaseController));
-router.put('/:id', TestCaseController.update.bind(TestCaseController));
+router.patch('/:id', TestCaseController.update.bind(TestCaseController));
 router.delete('/:id', TestCaseController.delete.bind(TestCaseController));
 
 export default router;

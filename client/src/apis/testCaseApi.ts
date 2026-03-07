@@ -29,9 +29,12 @@ export const testCaseApi = {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
-  update: (id: string, payload: Omit<TestCase, 'id' | 'createdAt' | 'updatedAt'>) =>
+  update: (
+    id: string,
+    payload: Partial<Omit<TestCase, 'id' | 'createdAt' | 'updatedAt'>>
+  ) =>
     request<TestCase>(`${API_TEST_CASE_URL}/${id}`, {
-      method: 'PUT',
+      method: 'PATCH',
       body: JSON.stringify(payload),
     }),
   remove: (id: string) =>

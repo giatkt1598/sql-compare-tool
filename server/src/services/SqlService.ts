@@ -1,11 +1,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import type { Response } from 'express';
 import mssql from 'mssql';
 import { Client as PgClient, type ClientConfig as PgClientConfig } from 'pg';
 import { FILE_PATHS } from '../config/fileConstants';
 import ProfileRepository from '../repositories/ProfileRepository';
 import SqlParameterRepository from '../repositories/SqlParameterRepository';
 import TestCaseRepository from '../repositories/TestCaseRepository';
+import TestCaseEventService from './TestCaseEventService';
 import type { ProfileData, SqlProvider } from '../types/profile';
 import type { SqlParameterData, SqlParameterDataType } from '../types/sqlParameter';
 import type { TestCaseStatus } from '../types/testCase';
@@ -60,9 +62,17 @@ interface RunTestCaseDraft {
   compareInOrder?: boolean;
 }
 
+interface RunTestCaseOptions {
+  source?: 'manual' | 'auto';
+}
+
 interface LatestTestCaseResult {
   testCaseId: string;
   profileId: string;
+  name: string;
+  enabled: boolean;
+  compareInOrder: boolean;
+  autoRunWhenSqlChanges: boolean;
   executionCount: number;
   executionTime: string | null;
   executionDuration: number | null;
@@ -80,6 +90,10 @@ interface LatestTestCaseResult {
 }
 
 class SqlService {
+  subscribeToTestCaseEvents(testCaseId: string, response: Response): () => void {
+    return TestCaseEventService.subscribe(testCaseId, response);
+  }
+
   async testConnection(sqlProvider: SqlProvider, connection: ProfileData['sqlConnection']) {
     if (!connection.host) {
       throw new Error('Database host is required');
@@ -109,9 +123,14 @@ class SqlService {
     return Number.isNaN(parsed) ? fallback : parsed;
   }
 
-  async runTestCase(testCaseId: string, draft?: RunTestCaseDraft): Promise<RunTestCaseResult> {
+  async runTestCase(
+    testCaseId: string,
+    draft?: RunTestCaseDraft,
+    options?: RunTestCaseOptions
+  ): Promise<RunTestCaseResult> {
     const startedAt = Date.now();
     const executedAt = new Date().toISOString();
+    const source = options?.source ?? 'manual';
 
     const testCase = TestCaseRepository.getById(testCaseId);
     if (!testCase) {
@@ -141,6 +160,15 @@ class SqlService {
       error: null,
       executionDuration: null,
       executionTime: executedAt,
+    });
+    TestCaseEventService.publish(testCase.id, {
+      type: 'running',
+      testCaseId: testCase.id,
+      status: 'running',
+      executionCount: nextExecutionCount,
+      executionTime: executedAt,
+      message: 'Test case is running',
+      source,
     });
 
     try {
@@ -199,6 +227,15 @@ class SqlService {
         executionDuration,
         executionTime: executedAt,
       });
+      TestCaseEventService.publish(testCase.id, {
+        type: 'completed',
+        testCaseId: testCase.id,
+        status,
+        executionCount: nextExecutionCount,
+        executionTime: executedAt,
+        message: 'Run test case completed',
+        source,
+      });
 
       return {
         success: true,
@@ -235,6 +272,15 @@ class SqlService {
           error: errorMessage,
           executionDuration,
           executionTime: executedAt,
+        });
+        TestCaseEventService.publish(testCase.id, {
+          type: 'error',
+          testCaseId: testCase.id,
+          status: 'error',
+          executionCount: nextExecutionCount,
+          executionTime: executedAt,
+          message: errorMessage,
+          source,
         });
       } catch {
         // Keep original error as the primary one.
@@ -279,6 +325,10 @@ class SqlService {
     return {
       testCaseId: testCase.id,
       profileId: profile.id,
+      name: testCase.name,
+      enabled: testCase.enabled,
+      compareInOrder: testCase.compareInOrder,
+      autoRunWhenSqlChanges: testCase.autoRunWhenSqlChanges,
       executionCount: testCase.executionCount,
       executionTime: testCase.executionTime,
       executionDuration: testCase.executionDuration,

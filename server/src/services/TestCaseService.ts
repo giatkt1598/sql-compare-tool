@@ -3,6 +3,7 @@ import path from 'node:path';
 import { FILE_PATHS } from '../config/fileConstants';
 import ProfileRepository from '../repositories/ProfileRepository';
 import TestCaseRepository from '../repositories/TestCaseRepository';
+import TestCaseAutoRunService from './TestCaseAutoRunService';
 import type { CreateTestCaseInput, UpdateTestCaseInput } from '../types/testCase';
 
 class TestCaseService {
@@ -38,7 +39,9 @@ class TestCaseService {
       );
     }
 
-    return TestCaseRepository.add(data);
+    const created = TestCaseRepository.add(data);
+    TestCaseAutoRunService.syncTestCase(created.id);
+    return created;
   }
 
   update(id: string, data: UpdateTestCaseInput) {
@@ -65,7 +68,12 @@ class TestCaseService {
       );
     }
 
-    return TestCaseRepository.update(id, data);
+    const updated = TestCaseRepository.update(id, data);
+    TestCaseAutoRunService.syncTestCase(updated.id);
+    if (existing.profileId !== updated.profileId) {
+      TestCaseAutoRunService.syncByProfileId(existing.profileId);
+    }
+    return updated;
   }
 
   delete(id: string) {
@@ -86,6 +94,7 @@ class TestCaseService {
       }
     }
 
+    TestCaseAutoRunService.removeTestCase(id);
     TestCaseRepository.delete(id);
     return { message: 'TestCase deleted successfully', id };
   }

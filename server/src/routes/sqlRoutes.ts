@@ -36,6 +36,10 @@ const router = express.Router();
  */
 router.post('/test-connection', SqlController.testConnection.bind(SqlController));
 router.get(
+  '/test-cases/:testCaseId/events',
+  SqlController.streamTestCaseEvents.bind(SqlController)
+);
+router.get(
   '/test-cases/:testCaseId/latest-result',
   SqlController.getLatestTestCaseResult.bind(SqlController)
 );

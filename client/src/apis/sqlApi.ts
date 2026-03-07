@@ -21,6 +21,7 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export const sqlApi = {
+  getTestCaseEventsUrl: (testCaseId: string) => `${API_SQL_URL}/test-cases/${testCaseId}/events`,
   testConnection: (payload: Pick<ProfileFormInput, 'sqlProvider' | 'sqlConnection'>) =>
     request<{ success: boolean; message: string; timestamp: string }>(
       `${API_SQL_URL}/test-connection`,
@@ -72,6 +73,10 @@ export const sqlApi = {
     request<{
       testCaseId: string;
       profileId: string;
+      name: string;
+      enabled: boolean;
+      compareInOrder: boolean;
+      autoRunWhenSqlChanges: boolean;
       executionCount: number;
       executionTime: string | null;
       executionDuration: number | null;

@@ -4,6 +4,7 @@ import { FILE_PATHS } from '../config/fileConstants';
 import ProfileRepository from '../repositories/ProfileRepository';
 import SqlParameterRepository from '../repositories/SqlParameterRepository';
 import TestCaseRepository from '../repositories/TestCaseRepository';
+import TestCaseAutoRunService from './TestCaseAutoRunService';
 import type { CreateProfileInput, SqlProvider, UpdateProfileInput } from '../types/profile';
 
 class ProfileService {
@@ -39,7 +40,9 @@ class ProfileService {
       }
     }
 
-    return ProfileRepository.update(id, profileData);
+    const updated = ProfileRepository.update(id, profileData);
+    TestCaseAutoRunService.syncByProfileId(id);
+    return updated;
   }
 
   deleteProfile(id: string): { message: string; id: string } {
@@ -48,6 +51,7 @@ class ProfileService {
       throw new Error(`Profile with ID ${id} not found`);
     }
 
+    TestCaseAutoRunService.removeByProfileId(id);
     SqlParameterRepository.deleteByProfileId(id);
     TestCaseRepository.deleteByProfileId(id);
 

@@ -8,6 +8,7 @@ class TestCase implements TestCaseData {
   name: string;
   parameter: string;
   compareInOrder: boolean;
+  autoRunWhenSqlChanges: boolean;
   executionCount: number;
   status: TestCaseData['status'];
   error: string | null;
@@ -24,6 +25,8 @@ class TestCase implements TestCaseData {
     this.name = data.name || '';
     this.parameter = data.parameter || '';
     this.compareInOrder = typeof data.compareInOrder === 'boolean' ? data.compareInOrder : false;
+    this.autoRunWhenSqlChanges =
+      typeof data.autoRunWhenSqlChanges === 'boolean' ? data.autoRunWhenSqlChanges : false;
     this.executionCount = Number.isFinite(Number(data.executionCount))
       ? Number(data.executionCount)
       : 0;
@@ -62,6 +65,10 @@ class TestCase implements TestCaseData {
 
     if (typeof this.compareInOrder !== 'boolean') {
       errors.push('compareInOrder must be a boolean');
+    }
+
+    if (typeof this.autoRunWhenSqlChanges !== 'boolean') {
+      errors.push('autoRunWhenSqlChanges must be a boolean');
     }
 
     if (!Number.isInteger(this.executionCount) || this.executionCount < 0) {
@@ -105,6 +112,7 @@ class TestCase implements TestCaseData {
       name: this.name,
       parameter: this.parameter,
       compareInOrder: this.compareInOrder,
+      autoRunWhenSqlChanges: this.autoRunWhenSqlChanges,
       executionCount: this.executionCount,
       status: this.status,
       error: this.error,
