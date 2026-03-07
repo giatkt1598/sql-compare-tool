@@ -9,6 +9,8 @@ import relativeTime from 'dayjs/plugin/relativeTime';
 import {
   Alert,
   Button,
+  Checkbox,
+  Chip,
   CircularProgress,
   Dialog,
   DialogActions,
@@ -20,6 +22,7 @@ import {
   RadioGroup,
   Snackbar,
   Stack,
+  Switch,
   Table,
   TableBody,
   TableCell,
@@ -30,7 +33,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
-import { useEffect, useState } from 'react';
+import { type ChangeEvent, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { sqlApi } from '../apis/sqlApi';
 import { testCaseApi } from '../apis/testCaseApi';
@@ -72,6 +75,7 @@ function TestCasesPage() {
   });
   const [runningTestCaseId, setRunningTestCaseId] = useState<string | null>(null);
   const [isRunManySubmitting, setIsRunManySubmitting] = useState(false);
+  const [updatingTestCaseIds, setUpdatingTestCaseIds] = useState<string[]>([]);
   const [runManyDialog, setRunManyDialog] = useState<RunManyDialogState>({
     open: false,
     scope: 'enabled',
@@ -245,6 +249,74 @@ function TestCasesPage() {
     }
   };
 
+  const setRowUpdating = (testCaseId: string, updating: boolean) => {
+    setUpdatingTestCaseIds((current) => {
+      if (updating) {
+        return current.includes(testCaseId) ? current : [...current, testCaseId];
+      }
+
+      return current.filter((id) => id !== testCaseId);
+    });
+  };
+
+  const handleToggleEnabled = async (item: TestCase, checked: boolean) => {
+    setRowUpdating(item.id, true);
+    try {
+      const updated = await testCaseApi.update(item.id, {
+        enabled: checked,
+      });
+      setItems((current) =>
+        current.map((testCase) => (testCase.id === updated.id ? updated : testCase))
+      );
+    } catch (updateError) {
+      showToast(
+        updateError instanceof Error ? updateError.message : 'Update enabled failed',
+        'error'
+      );
+    } finally {
+      setRowUpdating(item.id, false);
+    }
+  };
+
+  const handleToggleParallelExecution = async (item: TestCase, checked: boolean) => {
+    setRowUpdating(item.id, true);
+    try {
+      const updated = await testCaseApi.update(item.id, {
+        parallelExecution: checked,
+      });
+      setItems((current) =>
+        current.map((testCase) => (testCase.id === updated.id ? updated : testCase))
+      );
+    } catch (updateError) {
+      showToast(
+        updateError instanceof Error ? updateError.message : 'Update parallel execution failed',
+        'error'
+      );
+    } finally {
+      setRowUpdating(item.id, false);
+    }
+  };
+
+  const renderStatusChip = (status: TestCase['status']) => {
+    if (status === 'success') {
+      return <Chip label="Success" color="success" size="small" />;
+    }
+
+    if (status === 'failed') {
+      return <Chip label="Failed" color="warning" size="small" />;
+    }
+
+    if (status === 'error') {
+      return <Chip label="Error" color="error" size="small" />;
+    }
+
+    if (status === 'running') {
+      return <Chip label="Running" color="info" size="small" />;
+    }
+
+    return <Chip label="-" variant="outlined" size="small" />;
+  };
+
   if (!profileId) {
     return <Alert severity="error">profileId is required</Alert>;
   }
@@ -302,13 +374,15 @@ function TestCasesPage() {
             <Table>
               <TableHead>
                 <TableRow>
-                  <TableCell width={120}>Order</TableCell>
                   <TableCell>Name</TableCell>
-                  <TableCell width={120}>Enabled</TableCell>
                   <TableCell width={180}>Execution Duration</TableCell>
-                  <TableCell width={220}>Execution Time</TableCell>
-                  <TableCell width={160}>Status</TableCell>
-                  <TableCell align="right">Actions</TableCell>
+                  <TableCell width={150}>Execution Time</TableCell>
+                  <TableCell width={160}>Execution Parallel</TableCell>
+                  <TableCell width={120}>Status</TableCell>
+                  <TableCell width={50}>Enabled</TableCell>
+                  <TableCell width={160} align="right">
+                    Actions
+                  </TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -338,9 +412,7 @@ function TestCasesPage() {
                     }
                   >
                     <TableRow hover sx={{ cursor: 'pointer' }} onClick={() => handleRowClick(item)}>
-                      <TableCell>{item.orderIndex}</TableCell>
                       <TableCell>{item.name}</TableCell>
-                      <TableCell>{item.enabled ? 'Yes' : 'No'}</TableCell>
                       <TableCell>
                         {item.executionDuration
                           ? `${item.executionDuration.toLocaleString()} ms`
@@ -360,7 +432,26 @@ function TestCasesPage() {
                           '-'
                         )}
                       </TableCell>
-                      <TableCell>{item.status ?? '-'}</TableCell>
+
+                      <TableCell onClick={(event) => event.stopPropagation()}>
+                        <Checkbox
+                          checked={item.parallelExecution}
+                          disabled={updatingTestCaseIds.includes(item.id)}
+                          onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                            void handleToggleParallelExecution(item, event.target.checked)
+                          }
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell>{renderStatusChip(item.status)}</TableCell>
+                      <TableCell onClick={(event) => event.stopPropagation()}>
+                        <Switch
+                          checked={item.enabled}
+                          disabled={updatingTestCaseIds.includes(item.id)}
+                          onChange={(event) => void handleToggleEnabled(item, event.target.checked)}
+                          size="small"
+                        />
+                      </TableCell>
                       <TableCell align="right">
                         <Tooltip title="Run">
                           <IconButton

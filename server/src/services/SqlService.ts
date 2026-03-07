@@ -226,8 +226,6 @@ class SqlService {
 
       TestCaseRepository.update(testCase.id, {
         status: 'running',
-        error: null,
-        executionDuration: null,
         executionTime: executedAt,
       });
       TestCaseEventService.publish(testCase.id, {
@@ -366,12 +364,10 @@ class SqlService {
           oldSql,
           newSql,
           parameterPayload: rawParams,
-          testCasePayload:
-            effectiveTestCaseSnapshot ??
-            {
-              ...testCase.toJSON(),
-              name: effectiveTestCase.name,
-            },
+          testCasePayload: effectiveTestCaseSnapshot ?? {
+            ...testCase.toJSON(),
+            name: effectiveTestCase.name,
+          },
           diffPayload,
         }
       );
