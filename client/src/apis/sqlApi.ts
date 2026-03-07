@@ -54,13 +54,14 @@ export const sqlApi = {
       };
       diffSummary: {
         executionTime: string;
-        oldCount: number;
-        newCount: number;
-        differenceCount: number;
-        onlyInOldCount: number;
-        onlyInNewCount: number;
-        changedCount: number;
-        matched: boolean;
+        error?: string;
+        oldCount?: number;
+        newCount?: number;
+        differenceCount?: number;
+        onlyInOldCount?: number;
+        onlyInNewCount?: number;
+        changedCount?: number;
+        matched?: boolean;
       };
     }>(`${API_SQL_URL}/run-test-case`, {
       method: 'POST',
@@ -72,6 +73,7 @@ export const sqlApi = {
       profileId: string;
       executionCount: number;
       executionTime: string | null;
+      executionDuration: number | null;
       status: 'success' | 'failed' | 'running' | 'error' | null;
       error: string | null;
       oldRows: Array<Record<string, unknown>>;
@@ -79,13 +81,14 @@ export const sqlApi = {
       diffPayload: {
         summary: {
           executionTime: string;
-          oldCount: number;
-          newCount: number;
-          differenceCount: number;
-          onlyInOldCount: number;
-          onlyInNewCount: number;
-          changedCount: number;
-          matched: boolean;
+          error?: string;
+          oldCount?: number;
+          newCount?: number;
+          differenceCount?: number;
+          onlyInOldCount?: number;
+          onlyInNewCount?: number;
+          changedCount?: number;
+          matched?: boolean;
         };
         differences: Array<{
           index: number;

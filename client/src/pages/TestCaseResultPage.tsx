@@ -1,5 +1,6 @@
 import ArrowBackOutlinedIcon from '@mui/icons-material/ArrowBackOutlined';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
+import PlayArrowOutlinedIcon from '@mui/icons-material/PlayArrowOutlined';
 import {
   Alert,
   Box,
@@ -7,6 +8,7 @@ import {
   Chip,
   CircularProgress,
   Paper,
+  Snackbar,
   Stack,
   Table,
   TableBody,
@@ -35,6 +37,7 @@ interface LatestTestCaseResult {
   profileId: string;
   executionCount: number;
   executionTime: string | null;
+  executionDuration: number | null;
   status: 'success' | 'failed' | 'running' | 'error' | null;
   error: string | null;
   oldRows: QueryRow[];
@@ -42,16 +45,23 @@ interface LatestTestCaseResult {
   diffPayload: {
     summary: {
       executionTime: string;
-      oldCount: number;
-      newCount: number;
-      differenceCount: number;
-      onlyInOldCount: number;
-      onlyInNewCount: number;
-      changedCount: number;
-      matched: boolean;
+      error?: string;
+      oldCount?: number;
+      newCount?: number;
+      differenceCount?: number;
+      onlyInOldCount?: number;
+      onlyInNewCount?: number;
+      changedCount?: number;
+      matched?: boolean;
     };
     differences: ResultDiffItem[];
   };
+}
+
+interface ToastState {
+  open: boolean;
+  message: string;
+  severity: 'success' | 'error';
 }
 
 interface CombinedRow {
@@ -147,8 +157,29 @@ function TestCaseResultPage() {
   const [data, setData] = useState<LatestTestCaseResult | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [runError, setRunError] = useState<string | null>(null);
+  const [isRunning, setIsRunning] = useState(false);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(25);
+  const [toast, setToast] = useState<ToastState>({
+    open: false,
+    message: '',
+    severity: 'success',
+  });
+
+  const fetchResult = async (nextTestCaseId: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const result = await sqlApi.getLatestTestCaseResult(nextTestCaseId);
+      setData(result);
+      setPage(0);
+    } catch (fetchError) {
+      setError(fetchError instanceof Error ? fetchError.message : 'Load latest result failed');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!testCaseId) {
@@ -157,21 +188,7 @@ function TestCaseResultPage() {
       return;
     }
 
-    const fetchResult = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const result = await sqlApi.getLatestTestCaseResult(testCaseId);
-        setData(result);
-        setPage(0);
-      } catch (fetchError) {
-        setError(fetchError instanceof Error ? fetchError.message : 'Load latest result failed');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    void fetchResult();
+    void fetchResult(testCaseId);
   }, [testCaseId]);
 
   if (!profileId || !testCaseId) {
@@ -187,6 +204,35 @@ function TestCaseResultPage() {
       )
     : [];
   const pagedRows = combinedRows.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+  const latestRunError = runError ?? data?.error ?? data?.diffPayload.summary.error ?? null;
+
+  const handleRunTestCase = async () => {
+    if (!testCaseId) {
+      return;
+    }
+
+    setIsRunning(true);
+    setRunError(null);
+    try {
+      const result = await sqlApi.runTestCase(testCaseId);
+      await fetchResult(testCaseId);
+      if (result.success) {
+        setToast({
+          open: true,
+          message: 'Test case run completed',
+          severity: 'success',
+        });
+      } else {
+        setRunError(result.error ?? result.message);
+      }
+    } catch (runTestCaseError) {
+      setRunError(
+        runTestCaseError instanceof Error ? runTestCaseError.message : 'Run test case failed'
+      );
+    } finally {
+      setIsRunning(false);
+    }
+  };
 
   return (
     <Stack spacing={3}>
@@ -248,13 +294,30 @@ function TestCaseResultPage() {
                 Execution count: {data.executionCount}
               </Typography>
               <Typography variant="body2" color="text.secondary">
+                Execution duration:{' '}
+                {typeof data.executionDuration === 'number'
+                  ? `${data.executionDuration.toLocaleString()} ms`
+                  : '-'}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
                 Execution time:{' '}
                 {data.executionTime ? new Date(data.executionTime).toLocaleString() : '-'}
               </Typography>
+
+              <Box sx={{ flexGrow: 1 }} />
+              <Button
+                variant="contained"
+                startIcon={<PlayArrowOutlinedIcon />}
+                onClick={() => void handleRunTestCase()}
+                disabled={isRunning}
+                sx={{ minWidth: 200 }}
+              >
+                {isRunning ? 'Test case is running...' : 'Run Test Case'}
+              </Button>
             </Stack>
-            {data.error ? (
+            {latestRunError ? (
               <Alert severity="error" sx={{ mt: 2 }}>
-                {data.error}
+                {latestRunError}
               </Alert>
             ) : null}
           </Paper>
@@ -368,6 +431,21 @@ function TestCaseResultPage() {
           </TableContainer>
         </Stack>
       )}
+
+      <Snackbar
+        open={toast.open}
+        autoHideDuration={3500}
+        onClose={() => setToast((current) => ({ ...current, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert
+          onClose={() => setToast((current) => ({ ...current, open: false }))}
+          severity={toast.severity}
+          variant="filled"
+        >
+          {toast.message}
+        </Alert>
+      </Snackbar>
     </Stack>
   );
 }

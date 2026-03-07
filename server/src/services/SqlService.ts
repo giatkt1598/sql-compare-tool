@@ -23,13 +23,14 @@ interface ResultDiffItem {
 interface ResultDiffPayload {
   summary: {
     executionTime: string;
-    oldCount: number;
-    newCount: number;
-    differenceCount: number;
-    onlyInOldCount: number;
-    onlyInNewCount: number;
-    changedCount: number;
-    matched: boolean;
+    error?: string;
+    oldCount?: number;
+    newCount?: number;
+    differenceCount?: number;
+    onlyInOldCount?: number;
+    onlyInNewCount?: number;
+    changedCount?: number;
+    matched?: boolean;
   };
   differences: ResultDiffItem[];
 }
@@ -63,6 +64,7 @@ interface LatestTestCaseResult {
   profileId: string;
   executionCount: number;
   executionTime: string | null;
+  executionDuration: number | null;
   status: TestCaseStatus | null;
   error: string | null;
   oldRows: QueryRows;
@@ -127,6 +129,9 @@ class SqlService {
       parameter: draft?.parameter ?? testCase.parameter,
       enabled: draft?.enabled ?? testCase.enabled,
     };
+    let oldSql = '';
+    let newSql = '';
+    let rawParams: Record<string, unknown> = {};
 
     TestCaseRepository.update(testCase.id, {
       executionCount: nextExecutionCount,
@@ -137,23 +142,25 @@ class SqlService {
     });
 
     try {
-      const oldSql = this.readSqlFile(profile.oldSqlFilePath, 'oldSqlFilePath');
-      const newSql = this.readSqlFile(profile.newSqlFilePath, 'newSqlFilePath');
+      oldSql = this.readSqlFile(profile.oldSqlFilePath, 'oldSqlFilePath');
+      newSql = this.readSqlFile(profile.newSqlFilePath, 'newSqlFilePath');
 
-      const rawParams = this.parseTestCaseParameterObject(effectiveTestCase.parameter);
+      rawParams = this.parseTestCaseParameterObject(effectiveTestCase.parameter);
       const sqlParameters = SqlParameterRepository.getByProfileId(profile.id).sort(
         (a, b) => a.index - b.index
       );
       const boundParams = this.mapBoundParameters(sqlParameters, rawParams);
 
-      const oldRows = await this.executeQuery(
+      const oldRows = await this.executeNamedQuery(
+        path.basename(profile.oldSqlFilePath),
         profile.sqlProvider,
         profile.sqlConnection,
         oldSql,
         sqlParameters,
         boundParams
       );
-      const newRows = await this.executeQuery(
+      const newRows = await this.executeNamedQuery(
+        path.basename(profile.newSqlFilePath),
         profile.sqlProvider,
         profile.sqlConnection,
         newSql,
@@ -202,6 +209,18 @@ class SqlService {
     } catch (error) {
       const executionDuration = Date.now() - startedAt;
       const errorMessage = error instanceof Error ? error.message : 'Unexpected error';
+      const diffPayload = this.buildErrorDiffPayload(executedAt, errorMessage);
+      const files = this.writeRunArtifacts(
+        profile.name,
+        effectiveTestCase.name,
+        nextExecutionCount,
+        {
+          oldSql,
+          newSql,
+          parameterPayload: rawParams,
+          diffPayload,
+        }
+      );
 
       try {
         TestCaseRepository.update(testCase.id, {
@@ -214,7 +233,19 @@ class SqlService {
         // Keep original error as the primary one.
       }
 
-      throw new Error(errorMessage);
+      return {
+        success: false,
+        message: errorMessage,
+        testCaseId: testCase.id,
+        profileId: profile.id,
+        executionCount: nextExecutionCount,
+        status: 'error',
+        error: errorMessage,
+        executionDuration,
+        executionTime: executedAt,
+        files,
+        diffSummary: diffPayload.summary,
+      };
     }
   }
 
@@ -243,6 +274,7 @@ class SqlService {
       profileId: profile.id,
       executionCount: testCase.executionCount,
       executionTime: testCase.executionTime,
+      executionDuration: testCase.executionDuration,
       status: testCase.status,
       error: testCase.error,
       oldRows: this.readJsonFile<QueryRows>(oldResultPath, []),
@@ -250,13 +282,7 @@ class SqlService {
       diffPayload: this.readJsonFile<ResultDiffPayload>(diffResultPath, {
         summary: {
           executionTime: testCase.executionTime ?? '',
-          oldCount: 0,
-          newCount: 0,
-          differenceCount: 0,
-          onlyInOldCount: 0,
-          onlyInNewCount: 0,
-          changedCount: 0,
-          matched: true,
+          error: testCase.error ?? undefined,
         },
         differences: [],
       }),
@@ -376,6 +402,28 @@ class SqlService {
     }
 
     throw new Error(`Unsupported SQL provider: ${sqlProvider}`);
+  }
+
+  private async executeNamedQuery(
+    queryLabel: string,
+    sqlProvider: SqlProvider,
+    connection: ProfileData['sqlConnection'],
+    queryText: string,
+    sqlParameters: Array<Pick<SqlParameterData, 'name' | 'index' | 'dataType'>>,
+    boundParams: Record<string, unknown>
+  ): Promise<QueryRows> {
+    try {
+      return await this.executeQuery(
+        sqlProvider,
+        connection,
+        queryText,
+        sqlParameters,
+        boundParams
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unexpected error';
+      throw new Error(`"${queryLabel}": ${message}`, { cause: error });
+    }
   }
 
   private async testSqlServerConnection(connection: ProfileData['sqlConnection']) {
@@ -683,6 +731,16 @@ class SqlService {
     };
   }
 
+  private buildErrorDiffPayload(executionTime: string, error: string): ResultDiffPayload {
+    return {
+      summary: {
+        executionTime,
+        error,
+      },
+      differences: [],
+    };
+  }
+
   private deepEqual(left: unknown, right: unknown): boolean {
     return JSON.stringify(this.canonicalize(left)) === JSON.stringify(this.canonicalize(right));
   }
@@ -710,9 +768,9 @@ class SqlService {
       oldSql: string;
       newSql: string;
       parameterPayload: Record<string, unknown>;
-      oldRows: QueryRows;
-      newRows: QueryRows;
       diffPayload: ResultDiffPayload;
+      oldRows?: QueryRows;
+      newRows?: QueryRows;
     }
   ): {
     oldResultPath: string;
@@ -739,11 +797,19 @@ class SqlService {
     const newSqlPath = path.join(dataDir, 'new.sql');
     const parameterPath = path.join(dataDir, 'parameter.json');
 
-    fs.writeFileSync(oldResultPath, JSON.stringify(payload.oldRows, null, 2), 'utf8');
-    fs.writeFileSync(newResultPath, JSON.stringify(payload.newRows, null, 2), 'utf8');
+    if (payload.oldRows) {
+      fs.writeFileSync(oldResultPath, JSON.stringify(payload.oldRows, null, 2), 'utf8');
+    }
+    if (payload.newRows) {
+      fs.writeFileSync(newResultPath, JSON.stringify(payload.newRows, null, 2), 'utf8');
+    }
     fs.writeFileSync(diffResultPath, JSON.stringify(payload.diffPayload, null, 2), 'utf8');
-    fs.writeFileSync(oldSqlPath, payload.oldSql, 'utf8');
-    fs.writeFileSync(newSqlPath, payload.newSql, 'utf8');
+    if (payload.oldSql) {
+      fs.writeFileSync(oldSqlPath, payload.oldSql, 'utf8');
+    }
+    if (payload.newSql) {
+      fs.writeFileSync(newSqlPath, payload.newSql, 'utf8');
+    }
     fs.writeFileSync(parameterPath, JSON.stringify(payload.parameterPayload, null, 2), 'utf8');
 
     return {

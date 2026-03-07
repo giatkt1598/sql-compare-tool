@@ -120,7 +120,11 @@ function TestCasesPage() {
             : testCase
         )
       );
-      showToast(`Run "${item.name}" completed`, 'success');
+      if (result.success) {
+        showToast(`Run "${item.name}" completed`, 'success');
+      } else {
+        showToast(result.error ?? result.message, 'error');
+      }
     } catch (runError: any) {
       profileId && fetchItems(profileId);
       showToast(runError instanceof Error ? runError.message : 'Run test case failed', 'error');
