@@ -1,5 +1,5 @@
 WITH delay AS (
-  SELECT pg_sleep(6)
+  SELECT pg_sleep((1 + floor(random() * 10))::int)
 )
 SELECT
   u.id,

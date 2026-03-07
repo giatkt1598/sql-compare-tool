@@ -70,6 +70,7 @@ router.get(
  *         description: TestCase or Profile not found
  */
 router.post('/run-test-case', SqlController.runTestCase.bind(SqlController));
+router.post('/run-many-test-cases', SqlController.runManyTestCases.bind(SqlController));
 
 /**
  * @swagger

@@ -43,6 +43,7 @@ class SqlController {
             parameter?: string;
             enabled?: boolean;
             compareInOrder?: boolean;
+            parallelExecution?: boolean;
           }
         | undefined;
 
@@ -56,6 +57,40 @@ class SqlController {
 
       const result = await SqlService.runTestCase(testCaseId, draft);
       res.status(200).json(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unexpected error';
+      const statusCode = message.includes('not found') ? 404 : 400;
+      res.status(statusCode).json({
+        success: false,
+        message,
+      });
+    }
+  }
+
+  runManyTestCases(req: Request, res: Response): void {
+    try {
+      const profileId = String(req.body?.profileId ?? '').trim();
+      const scope = req.body?.scope === 'all' ? 'all' : 'enabled';
+      const runInParallel = Boolean(req.body?.runInParallel);
+
+      if (!profileId) {
+        res.status(400).json({
+          success: false,
+          message: 'profileId is required',
+        });
+        return;
+      }
+
+      const result = SqlService.runManyTestCases({
+        profileId,
+        scope,
+        runInParallel,
+      });
+
+      res.status(202).json({
+        success: true,
+        ...result,
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unexpected error';
       const statusCode = message.includes('not found') ? 404 : 400;

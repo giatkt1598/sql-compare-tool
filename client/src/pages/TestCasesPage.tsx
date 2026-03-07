@@ -10,8 +10,14 @@ import {
   Alert,
   Button,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   IconButton,
   Paper,
+  Radio,
+  RadioGroup,
   Snackbar,
   Stack,
   Table,
@@ -20,6 +26,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  FormControlLabel,
   Tooltip,
   Typography,
 } from '@mui/material';
@@ -37,6 +44,21 @@ interface ToastState {
   severity: 'success' | 'error';
 }
 
+interface RunManyDialogState {
+  open: boolean;
+  scope: 'all' | 'enabled';
+  runInParallel: 'yes' | 'no';
+}
+
+interface TestCaseStreamEvent {
+  type: 'connected' | 'running' | 'completed' | 'error';
+  testCaseId: string;
+  status?: 'success' | 'failed' | 'running' | 'error' | null;
+  executionCount?: number;
+  executionTime?: string | null;
+  message?: string;
+}
+
 function TestCasesPage() {
   const navigate = useNavigate();
   const { profileId } = useParams<{ profileId: string }>();
@@ -49,6 +71,12 @@ function TestCasesPage() {
     severity: 'success',
   });
   const [runningTestCaseId, setRunningTestCaseId] = useState<string | null>(null);
+  const [isRunManySubmitting, setIsRunManySubmitting] = useState(false);
+  const [runManyDialog, setRunManyDialog] = useState<RunManyDialogState>({
+    open: false,
+    scope: 'enabled',
+    runInParallel: 'no',
+  });
 
   useEffect(() => {
     if (!profileId) {
@@ -59,6 +87,69 @@ function TestCasesPage() {
 
     void fetchItems(profileId);
   }, [profileId]);
+
+  useEffect(() => {
+    const eventSources = items.map((item) => {
+      const eventSource = new EventSource(sqlApi.getTestCaseEventsUrl(item.id));
+      const handleStreamEvent = (event: MessageEvent<string>) => {
+        try {
+          const payload = JSON.parse(event.data) as TestCaseStreamEvent;
+          if (!payload.testCaseId) {
+            return;
+          }
+
+          if (payload.type === 'running') {
+            setItems((current) =>
+              current.map((testCase) =>
+                testCase.id === payload.testCaseId
+                  ? {
+                      ...testCase,
+                      status: 'running',
+                      error: null,
+                      executionTime: payload.executionTime ?? testCase.executionTime,
+                      executionCount: payload.executionCount ?? testCase.executionCount,
+                    }
+                  : testCase
+              )
+            );
+            return;
+          }
+
+          if (payload.type === 'completed' || payload.type === 'error') {
+            void testCaseApi.getById(payload.testCaseId).then((latestTestCase) => {
+              setItems((current) =>
+                current.map((testCase) =>
+                  testCase.id === latestTestCase.id ? latestTestCase : testCase
+                )
+              );
+            });
+          }
+        } catch {
+          // Ignore malformed event payloads.
+        }
+      };
+
+      eventSource.addEventListener('running', handleStreamEvent);
+      eventSource.addEventListener('completed', handleStreamEvent);
+      eventSource.addEventListener('error', handleStreamEvent);
+
+      return {
+        eventSource,
+        cleanup: () => {
+          eventSource.removeEventListener('running', handleStreamEvent);
+          eventSource.removeEventListener('completed', handleStreamEvent);
+          eventSource.removeEventListener('error', handleStreamEvent);
+          eventSource.close();
+        },
+      };
+    });
+
+    return () => {
+      for (const current of eventSources) {
+        current.cleanup();
+      }
+    };
+  }, [items.map((item) => item.id).join('|')]);
 
   const fetchItems = async (profileId: string) => {
     setIsLoading(true);
@@ -130,6 +221,30 @@ function TestCasesPage() {
       showToast(runError instanceof Error ? runError.message : 'Run test case failed', 'error');
     } finally {
       setRunningTestCaseId(null);
+    }
+  };
+
+  const handleRunMany = async () => {
+    if (!profileId) {
+      return;
+    }
+
+    setIsRunManySubmitting(true);
+    try {
+      await sqlApi.runManyTestCases({
+        profileId,
+        scope: runManyDialog.scope,
+        runInParallel: runManyDialog.runInParallel === 'yes',
+      });
+      setRunManyDialog((current) => ({ ...current, open: false }));
+      showToast('Run many started', 'success');
+    } catch (runManyError) {
+      showToast(
+        runManyError instanceof Error ? runManyError.message : 'Run many failed',
+        'error'
+      );
+    } finally {
+      setIsRunManySubmitting(false);
     }
   };
 
@@ -296,10 +411,75 @@ function TestCasesPage() {
             <Typography variant="body2" color="text.secondary">
               Total test cases: {items.length}
             </Typography>
-            <Button variant="contained">Run All</Button>
+            <Button variant="contained" onClick={() => setRunManyDialog((current) => ({ ...current, open: true }))}>
+              Run Many
+            </Button>
           </Stack>
         </Stack>
       )}
+
+      <Dialog
+        open={runManyDialog.open}
+        onClose={() => {
+          if (!isRunManySubmitting) {
+            setRunManyDialog((current) => ({ ...current, open: false }));
+          }
+        }}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Test case will run?</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ pt: 1 }}>
+            <Stack spacing={1}>
+              <Typography variant="subtitle2">Scope</Typography>
+              <RadioGroup
+                value={runManyDialog.scope}
+                onChange={(event) =>
+                  setRunManyDialog((current) => ({
+                    ...current,
+                    scope: event.target.value as 'all' | 'enabled',
+                  }))
+                }
+              >
+                <FormControlLabel value="all" control={<Radio />} label="All" />
+                <FormControlLabel
+                  value="enabled"
+                  control={<Radio />}
+                  label="Only enabled test case"
+                />
+              </RadioGroup>
+            </Stack>
+
+            <Stack spacing={1}>
+              <Typography variant="subtitle2">Run in parallel?</Typography>
+              <RadioGroup
+                value={runManyDialog.runInParallel}
+                onChange={(event) =>
+                  setRunManyDialog((current) => ({
+                    ...current,
+                    runInParallel: event.target.value as 'yes' | 'no',
+                  }))
+                }
+              >
+                <FormControlLabel value="yes" control={<Radio />} label="Yes" />
+                <FormControlLabel value="no" control={<Radio />} label="No" />
+              </RadioGroup>
+            </Stack>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setRunManyDialog((current) => ({ ...current, open: false }))}
+            disabled={isRunManySubmitting}
+          >
+            Cancel
+          </Button>
+          <Button variant="contained" onClick={() => void handleRunMany()} disabled={isRunManySubmitting}>
+            Run Many
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Snackbar
         open={toast.open}

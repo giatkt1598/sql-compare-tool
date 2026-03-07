@@ -74,6 +74,24 @@ export const sqlApi = {
       method: 'POST',
       body: JSON.stringify({ testCaseId, draft }),
     }),
+  runManyTestCases: (payload: {
+    profileId: string;
+    scope: 'all' | 'enabled';
+    runInParallel: boolean;
+  }) =>
+    request<{
+      success: boolean;
+      profileId: string;
+      totalSelected: number;
+      startedCount: number;
+      skippedCount: number;
+      startedTestCaseIds: string[];
+      skippedTestCaseIds: string[];
+      message: string;
+    }>(`${API_SQL_URL}/run-many-test-cases`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
   getLatestTestCaseResult: (testCaseId: string) =>
     request<{
       testCaseId: string;

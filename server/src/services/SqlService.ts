@@ -75,6 +75,12 @@ interface RunTestCaseOptions {
   source?: 'manual' | 'auto';
 }
 
+interface RunManyTestCasesOptions {
+  profileId: string;
+  scope: 'all' | 'enabled';
+  runInParallel: boolean;
+}
+
 interface ActiveExecution {
   id: string;
   testCaseId: string;
@@ -406,6 +412,60 @@ class SqlService {
     } finally {
       this.clearExecution(execution);
     }
+  }
+
+  runManyTestCases(options: RunManyTestCasesOptions): {
+    profileId: string;
+    totalSelected: number;
+    startedCount: number;
+    skippedCount: number;
+    startedTestCaseIds: string[];
+    skippedTestCaseIds: string[];
+    message: string;
+  } {
+    const profile = ProfileRepository.getById(options.profileId);
+    if (!profile) {
+      throw new Error(`Profile with ID ${options.profileId} not found`);
+    }
+
+    const selectedTestCases = TestCaseRepository.getByProfileId(options.profileId)
+      .filter((testCase) => (options.scope === 'enabled' ? testCase.enabled : true))
+      .sort((a, b) => a.orderIndex - b.orderIndex);
+
+    const startedTestCases = selectedTestCases.filter(
+      (testCase) => !this.activeExecutions.has(testCase.id)
+    );
+    const skippedTestCases = selectedTestCases.filter((testCase) =>
+      this.activeExecutions.has(testCase.id)
+    );
+
+    if (options.runInParallel) {
+      void Promise.allSettled(
+        startedTestCases.map((testCase) =>
+          this.runTestCase(testCase.id, undefined, { source: 'manual' })
+        )
+      );
+    } else {
+      void (async () => {
+        for (const testCase of startedTestCases) {
+          try {
+            await this.runTestCase(testCase.id, undefined, { source: 'manual' });
+          } catch {
+            // Keep batch moving even if one test case fails.
+          }
+        }
+      })();
+    }
+
+    return {
+      profileId: options.profileId,
+      totalSelected: selectedTestCases.length,
+      startedCount: startedTestCases.length,
+      skippedCount: skippedTestCases.length,
+      startedTestCaseIds: startedTestCases.map((testCase) => testCase.id),
+      skippedTestCaseIds: skippedTestCases.map((testCase) => testCase.id),
+      message: `Run many started for ${startedTestCases.length} test case(s)`,
+    };
   }
 
   getLatestTestCaseResult(testCaseId: string): LatestTestCaseResult {
