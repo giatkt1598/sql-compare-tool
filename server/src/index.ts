@@ -1,6 +1,7 @@
 import express, { type Request, type Response } from 'express';
 import cors from 'cors';
 import swaggerUi from 'swagger-ui-express';
+import DataMigrationService from './services/DataMigrationService';
 import swaggerSpec from './config/swagger';
 import profileRoutes from './routes/profileRoutes';
 import sqlRoutes from './routes/sqlRoutes';
@@ -54,12 +55,21 @@ app.use((_req: Request, res: Response) => {
   });
 });
 
-TestCaseAutoRunService.syncAll();
+async function startServer(): Promise<void> {
+  await DataMigrationService.runOnStartup();
+  TestCaseAutoRunService.syncAll();
 
-app.listen(PORT, () => {
-  console.log(`
+  app.listen(PORT, () => {
+    console.log(`
 SQL Comparer Server
 Server running on http://localhost:${PORT}
 API documentation: http://localhost:${PORT}/api-docs
   `);
+  });
+}
+
+void startServer().catch((error: unknown) => {
+  const message = error instanceof Error ? error.message : 'Unexpected startup error';
+  console.error(`[startup] ${message}`);
+  process.exit(1);
 });
