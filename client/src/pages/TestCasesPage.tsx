@@ -337,6 +337,20 @@ function TestCasesPage() {
     return '-';
   };
 
+  const renderStatusCell = (item: TestCase) => {
+    const chip = renderStatusChip(item.status);
+
+    if (item.status === 'error' && item.error) {
+      return (
+        <Tooltip title={item.error} arrow placement="top">
+          <span>{chip}</span>
+        </Tooltip>
+      );
+    }
+
+    return chip;
+  };
+
   const handleSort = (field: SortField) => {
     setSortDirection((currentDirection) =>
       sortField === field ? (currentDirection === 'asc' ? 'desc' : 'asc') : 'asc'
@@ -643,7 +657,7 @@ function TestCasesPage() {
                           size="small"
                         />
                       </TableCell>
-                      <TableCell>{renderStatusChip(item.status)}</TableCell>
+                      <TableCell>{renderStatusCell(item)}</TableCell>
                       <TableCell onClick={(event) => event.stopPropagation()}>
                         <Switch
                           checked={item.enabled}
