@@ -393,67 +393,139 @@ function TestCaseResultPage() {
       ) : (
         <Stack spacing={2}>
           <Paper sx={{ p: 2.5 }}>
-            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems="center">
-              <Chip
-                label={`Status: ${data.status ?? '-'}`}
-                color={
-                  data.status === 'success'
-                    ? 'success'
-                    : data.status === 'error'
-                      ? 'error'
-                      : data.status === 'failed'
-                        ? 'warning'
-                        : 'default'
-                }
-              />
-              <Typography variant="body2" color="text.secondary">
-                Execution count: {data.executionCount}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Execution duration:{' '}
-                {typeof data.executionDuration === 'number'
-                  ? `${data.executionDuration.toLocaleString()} ms`
-                  : '-'}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Parallel execution:{' '}
-                {(data.diffPayload.summary.parallelExecution ?? data.parallelExecution)
-                  ? 'On'
-                  : 'Off'}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Old SQL duration:{' '}
-                {typeof data.diffPayload.summary.oldSqlDuration === 'number'
-                  ? `${data.diffPayload.summary.oldSqlDuration.toLocaleString()} ms`
-                  : '-'}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                New SQL duration:{' '}
-                {typeof data.diffPayload.summary.newSqlDuration === 'number'
-                  ? `${data.diffPayload.summary.newSqlDuration.toLocaleString()} ms`
-                  : '-'}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Compare duration:{' '}
-                {typeof data.diffPayload.summary.compareDuration === 'number'
-                  ? `${data.diffPayload.summary.compareDuration.toLocaleString()} ms`
-                  : '-'}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Execution time:{' '}
-                {data.executionTime ? (
-                  <span>
-                    <Tooltip title={new Date(data.executionTime).toLocaleString()}>
-                      <span>{dayjs(data.executionTime).fromNow()}</span>
-                    </Tooltip>
-                  </span>
-                ) : (
-                  '-'
-                )}
-              </Typography>
+            <Stack direction="row" justifyContent={'space-between'}>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: {
+                    xs: '1fr',
+                    sm: 'repeat(2, minmax(0, 1fr))',
+                    md: 'repeat(4, minmax(0, 1fr))',
+                    lg: 'repeat(8, minmax(0, 1fr))',
+                  },
+                  gap: 1.25,
+                  alignItems: 'stretch',
+                }}
+              >
+                <Box
+                  sx={{
+                    p: 1.25,
+                    border: 1,
+                    borderColor: 'divider',
+                    borderRadius: 1.5,
+                  }}
+                >
+                  <Typography variant="caption" color="text.secondary">
+                    Status
+                  </Typography>
+                  <Box sx={{ mt: 0.75 }}>
+                    <Chip
+                      label={data.status ?? '-'}
+                      color={
+                        data.status === 'success'
+                          ? 'success'
+                          : data.status === 'error'
+                            ? 'error'
+                            : data.status === 'failed'
+                              ? 'warning'
+                              : 'default'
+                      }
+                    />
+                  </Box>
+                </Box>
 
-              <Box sx={{ flexGrow: 1 }} />
-              <Stack direction="row" spacing={1}>
+                <Box sx={{ p: 1.25, border: 1, borderColor: 'divider', borderRadius: 1.5 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    Execution Count
+                  </Typography>
+                  <Typography variant="body2" sx={{ mt: 0.75 }}>
+                    {data.executionCount}
+                  </Typography>
+                </Box>
+
+                <Box sx={{ p: 1.25, border: 1, borderColor: 'divider', borderRadius: 1.5 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    Parallel Execution
+                  </Typography>
+                  <Typography variant="body2" sx={{ mt: 0.75 }}>
+                    {(data.diffPayload.summary.parallelExecution ?? data.parallelExecution)
+                      ? 'On'
+                      : 'Off'}
+                  </Typography>
+                </Box>
+
+                <Box sx={{ p: 1.25, border: 1, borderColor: 'divider', borderRadius: 1.5 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    Execution Time
+                  </Typography>
+                  <Typography variant="body2" sx={{ mt: 0.75 }}>
+                    {data.executionTime ? (
+                      <Tooltip title={new Date(data.executionTime).toLocaleString()}>
+                        <span>{dayjs(data.executionTime).fromNow()}</span>
+                      </Tooltip>
+                    ) : (
+                      '-'
+                    )}
+                  </Typography>
+                </Box>
+
+                <Box sx={{ p: 1.25, border: 1, borderColor: 'divider', borderRadius: 1.5 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    Execution Duration
+                  </Typography>
+                  <Typography variant="body2" sx={{ mt: 0.75 }}>
+                    {typeof data.executionDuration === 'number'
+                      ? `${data.executionDuration.toLocaleString()} ms`
+                      : '-'}
+                  </Typography>
+                </Box>
+
+                <Box sx={{ p: 1.25, border: 1, borderColor: 'divider', borderRadius: 1.5 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    Old SQL Duration
+                  </Typography>
+                  <Typography variant="body2" sx={{ mt: 0.75 }}>
+                    {typeof data.diffPayload.summary.oldSqlDuration === 'number'
+                      ? `${data.diffPayload.summary.oldSqlDuration.toLocaleString()} ms`
+                      : '-'}
+                  </Typography>
+                </Box>
+
+                <Box sx={{ p: 1.25, border: 1, borderColor: 'divider', borderRadius: 1.5 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    New SQL Duration
+                  </Typography>
+                  <Typography variant="body2" sx={{ mt: 0.75 }}>
+                    {typeof data.diffPayload.summary.newSqlDuration === 'number'
+                      ? `${data.diffPayload.summary.newSqlDuration.toLocaleString()} ms`
+                      : '-'}
+                  </Typography>
+                </Box>
+
+                <Box sx={{ p: 1.25, border: 1, borderColor: 'divider', borderRadius: 1.5 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    Compare Duration
+                  </Typography>
+                  <Typography variant="body2" sx={{ mt: 0.75 }}>
+                    {typeof data.diffPayload.summary.compareDuration === 'number'
+                      ? `${data.diffPayload.summary.compareDuration.toLocaleString()} ms`
+                      : '-'}
+                  </Typography>
+                </Box>
+              </Box>
+
+              <Stack direction="column" gap={0} sx={{}}>
+                <Box>
+                  <Button
+                    variant="contained"
+                    startIcon={<PlayArrowOutlinedIcon />}
+                    onClick={() => void handleRunTestCase()}
+                    disabled={isRunning || isAutoRunSaving}
+                    sx={{ minWidth: { xs: 200, xl: 160 } }}
+                  >
+                    {isRunning ? 'Test case is running...' : 'Run Test Case'}
+                  </Button>
+                </Box>
                 <FormControlLabel
                   control={
                     <Checkbox
@@ -466,15 +538,6 @@ function TestCaseResultPage() {
                   label="Auto run"
                   sx={{ mr: 0 }}
                 />
-                <Button
-                  variant="contained"
-                  startIcon={<PlayArrowOutlinedIcon />}
-                  onClick={() => void handleRunTestCase()}
-                  disabled={isRunning || isAutoRunSaving}
-                  sx={{ minWidth: 200 }}
-                >
-                  {isRunning ? 'Test case is running...' : 'Run Test Case'}
-                </Button>
               </Stack>
             </Stack>
             {latestRunError ? (
