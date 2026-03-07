@@ -8,7 +8,7 @@ import SqlParameterRepository from '../repositories/SqlParameterRepository';
 import TestCaseRepository from '../repositories/TestCaseRepository';
 import type { ProfileData, SqlProvider } from '../types/profile';
 import type { SqlParameterData, SqlParameterDataType } from '../types/sqlParameter';
-import type { TestCaseExecutionResult } from '../types/testCase';
+import type { TestCaseStatus } from '../types/testCase';
 
 type QueryRow = Record<string, unknown>;
 type QueryRows = QueryRow[];
@@ -40,7 +40,8 @@ interface RunTestCaseResult {
   testCaseId: string;
   profileId: string;
   executionCount: number;
-  executionResult: TestCaseExecutionResult;
+  status: TestCaseStatus;
+  error: string | null;
   executionDuration: number;
   executionTime: string;
   files: {
@@ -97,6 +98,14 @@ class SqlService {
 
     const nextExecutionCount = testCase.executionCount + 1;
 
+    TestCaseRepository.update(testCase.id, {
+      executionCount: nextExecutionCount,
+      status: 'running',
+      error: null,
+      executionDuration: null,
+      executionTime: executedAt,
+    });
+
     try {
       const oldSql = this.readSqlFile(profile.oldSqlFilePath, 'oldSqlFilePath');
       const newSql = this.readSqlFile(profile.newSqlFilePath, 'newSqlFilePath');
@@ -130,13 +139,11 @@ class SqlService {
       });
 
       const executionDuration = Date.now() - startedAt;
-      const executionResult: TestCaseExecutionResult = diffPayload.summary.matched
-        ? 'success'
-        : 'failed';
+      const status: TestCaseStatus = diffPayload.summary.matched ? 'success' : 'failed';
 
       TestCaseRepository.update(testCase.id, {
-        executionCount: nextExecutionCount,
-        executionResult,
+        status,
+        error: null,
         executionDuration,
         executionTime: executedAt,
       });
@@ -147,7 +154,8 @@ class SqlService {
         testCaseId: testCase.id,
         profileId: profile.id,
         executionCount: nextExecutionCount,
-        executionResult,
+        status,
+        error: null,
         executionDuration,
         executionTime: executedAt,
         files,
@@ -155,11 +163,12 @@ class SqlService {
       };
     } catch (error) {
       const executionDuration = Date.now() - startedAt;
+      const errorMessage = error instanceof Error ? error.message : 'Unexpected error';
 
       try {
         TestCaseRepository.update(testCase.id, {
-          executionCount: nextExecutionCount,
-          executionResult: 'failed',
+          status: 'error',
+          error: errorMessage,
           executionDuration,
           executionTime: executedAt,
         });
@@ -167,7 +176,7 @@ class SqlService {
         // Keep original error as the primary one.
       }
 
-      throw error;
+      throw new Error(errorMessage);
     }
   }
 

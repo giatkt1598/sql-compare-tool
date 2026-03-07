@@ -1,9 +1,5 @@
 import type { ValidationResult } from '../types/profile';
-import {
-  TEST_CASE_EXECUTION_RESULTS,
-  type CreateTestCaseInput,
-  type TestCaseData,
-} from '../types/testCase';
+import { TEST_CASE_STATUSES, type CreateTestCaseInput, type TestCaseData } from '../types/testCase';
 
 class TestCase implements TestCaseData {
   id: string;
@@ -12,7 +8,8 @@ class TestCase implements TestCaseData {
   name: string;
   parameter: string;
   executionCount: number;
-  executionResult: TestCaseData['executionResult'];
+  status: TestCaseData['status'];
+  error: string | null;
   executionDuration: number | null;
   executionTime: string | null;
   enabled: boolean;
@@ -28,7 +25,8 @@ class TestCase implements TestCaseData {
     this.executionCount = Number.isFinite(Number(data.executionCount))
       ? Number(data.executionCount)
       : 0;
-    this.executionResult = data.executionResult ?? null;
+    this.status = data.status ?? null;
+    this.error = data.error ?? null;
     this.executionDuration =
       data.executionDuration === null
         ? null
@@ -64,11 +62,12 @@ class TestCase implements TestCaseData {
       errors.push('executionCount must be an integer and greater than or equal to 0');
     }
 
-    if (
-      this.executionResult !== null &&
-      !TEST_CASE_EXECUTION_RESULTS.includes(this.executionResult)
-    ) {
-      errors.push(`executionResult must be one of: ${TEST_CASE_EXECUTION_RESULTS.join(', ')}`);
+    if (this.status !== null && !TEST_CASE_STATUSES.includes(this.status)) {
+      errors.push(`status must be one of: ${TEST_CASE_STATUSES.join(', ')}`);
+    }
+
+    if (this.error !== null && typeof this.error !== 'string') {
+      errors.push('error must be a string or null');
     }
 
     if (
@@ -100,7 +99,8 @@ class TestCase implements TestCaseData {
       name: this.name,
       parameter: this.parameter,
       executionCount: this.executionCount,
-      executionResult: this.executionResult,
+      status: this.status,
+      error: this.error,
       executionDuration: this.executionDuration,
       executionTime: this.executionTime,
       enabled: this.enabled,

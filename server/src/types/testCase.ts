@@ -1,7 +1,7 @@
-export const TEST_CASE_EXECUTION_RESULTS = ['success', 'failed'] as const;
+export const TEST_CASE_STATUSES = ['success', 'failed', 'running', 'error'] as const;
 
-export type TestCaseExecutionResult = (typeof TEST_CASE_EXECUTION_RESULTS)[number];
-export type NullableTestCaseExecutionResult = TestCaseExecutionResult | null;
+export type TestCaseStatus = (typeof TEST_CASE_STATUSES)[number];
+export type NullableTestCaseStatus = TestCaseStatus | null;
 
 export interface TestCaseData {
   id: string;
@@ -10,7 +10,8 @@ export interface TestCaseData {
   name: string;
   parameter: string;
   executionCount: number;
-  executionResult: NullableTestCaseExecutionResult;
+  status: NullableTestCaseStatus;
+  error: string | null;
   executionDuration: number | null;
   executionTime: string | null;
   enabled: boolean;

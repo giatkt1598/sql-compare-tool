@@ -111,7 +111,8 @@ function TestCasesPage() {
             ? {
                 ...testCase,
                 executionCount: result.executionCount,
-                executionResult: result.executionResult,
+                status: result.status,
+                error: result.error,
                 executionDuration: result.executionDuration,
                 executionTime: result.executionTime,
               }
@@ -188,7 +189,7 @@ function TestCasesPage() {
                   <TableCell width={120}>Enabled</TableCell>
                   <TableCell width={180}>Execution Duration</TableCell>
                   <TableCell width={220}>Execution Time</TableCell>
-                  <TableCell width={160}>Result</TableCell>
+                  <TableCell width={160}>Status</TableCell>
                   <TableCell align="right">Actions</TableCell>
                 </TableRow>
               </TableHead>
@@ -241,7 +242,7 @@ function TestCasesPage() {
                           '-'
                         )}
                       </TableCell>
-                      <TableCell>{item.executionResult ?? '-'}</TableCell>
+                      <TableCell>{item.status ?? '-'}</TableCell>
                       <TableCell align="right">
                         <Tooltip title="Run">
                           <IconButton

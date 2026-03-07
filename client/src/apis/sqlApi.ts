@@ -36,7 +36,8 @@ export const sqlApi = {
       testCaseId: string;
       profileId: string;
       executionCount: number;
-      executionResult: 'success' | 'failed';
+      status: 'success' | 'failed' | 'running' | 'error';
+      error: string | null;
       executionDuration: number;
       executionTime: string;
       files: {

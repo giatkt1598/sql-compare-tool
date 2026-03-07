@@ -148,9 +148,12 @@ router.post('/run-test-case', SqlController.runTestCase.bind(SqlController));
  *           type: string
  *         profileId:
  *           type: string
- *         executionResult:
+ *         status:
  *           type: string
- *           enum: [success, failed]
+ *           enum: [success, failed, running, error]
+ *         error:
+ *           type: string
+ *           nullable: true
  *         executionDuration:
  *           type: number
  *           example: 125

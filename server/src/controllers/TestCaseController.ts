@@ -1,9 +1,9 @@
 import type { Request, Response } from 'express';
 import TestCaseService from '../services/TestCaseService';
 import {
-  TEST_CASE_EXECUTION_RESULTS,
-  type NullableTestCaseExecutionResult,
-  type TestCaseExecutionResult,
+  TEST_CASE_STATUSES,
+  type NullableTestCaseStatus,
+  type TestCaseStatus,
 } from '../types/testCase';
 
 class TestCaseController {
@@ -60,7 +60,8 @@ class TestCaseController {
         name?: string;
         parameter?: string;
         executionCount?: number;
-        executionResult?: string | null;
+        status?: string | null;
+        error?: string | null;
         executionDuration?: number | null;
         executionTime?: string | null;
         enabled?: boolean;
@@ -82,13 +83,13 @@ class TestCaseController {
       }
 
       if (
-        payload.executionResult !== undefined &&
-        payload.executionResult !== null &&
-        !TEST_CASE_EXECUTION_RESULTS.includes(payload.executionResult as TestCaseExecutionResult)
+        payload.status !== undefined &&
+        payload.status !== null &&
+        !TEST_CASE_STATUSES.includes(payload.status as TestCaseStatus)
       ) {
         res.status(400).json({
           success: false,
-          message: `executionResult must be one of: ${TEST_CASE_EXECUTION_RESULTS.join(', ')}`,
+          message: `status must be one of: ${TEST_CASE_STATUSES.join(', ')}`,
         });
         return;
       }
@@ -104,7 +105,8 @@ class TestCaseController {
         name: payload.name,
         parameter: payload.parameter ?? '',
         executionCount,
-        executionResult: (payload.executionResult ?? null) as NullableTestCaseExecutionResult,
+        status: (payload.status ?? null) as NullableTestCaseStatus,
+        error: payload.error ?? null,
         executionDuration:
           payload.executionDuration === undefined ? null : payload.executionDuration,
         executionTime: payload.executionTime ?? null,
@@ -131,7 +133,8 @@ class TestCaseController {
         name?: string;
         parameter?: string;
         executionCount?: number;
-        executionResult?: string | null;
+        status?: string | null;
+        error?: string | null;
         executionDuration?: number | null;
         executionTime?: string | null;
         enabled?: boolean;
@@ -143,13 +146,13 @@ class TestCaseController {
       }
 
       if (
-        payload.executionResult !== undefined &&
-        payload.executionResult !== null &&
-        !TEST_CASE_EXECUTION_RESULTS.includes(payload.executionResult as TestCaseExecutionResult)
+        payload.status !== undefined &&
+        payload.status !== null &&
+        !TEST_CASE_STATUSES.includes(payload.status as TestCaseStatus)
       ) {
         res.status(400).json({
           success: false,
-          message: `executionResult must be one of: ${TEST_CASE_EXECUTION_RESULTS.join(', ')}`,
+          message: `status must be one of: ${TEST_CASE_STATUSES.join(', ')}`,
         });
         return;
       }
@@ -160,10 +163,9 @@ class TestCaseController {
         name: payload.name,
         parameter: payload.parameter,
         executionCount: payload.executionCount,
-        executionResult:
-          payload.executionResult !== undefined
-            ? (payload.executionResult as NullableTestCaseExecutionResult)
-            : undefined,
+        status:
+          payload.status !== undefined ? (payload.status as NullableTestCaseStatus) : undefined,
+        error: payload.error,
         executionDuration:
           payload.executionDuration !== undefined ? payload.executionDuration : undefined,
         executionTime: payload.executionTime,

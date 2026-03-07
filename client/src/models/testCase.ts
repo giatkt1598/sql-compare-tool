@@ -1,4 +1,4 @@
-export type ExecutionResult = 'success' | 'failed' | null;
+export type TestCaseStatus = 'success' | 'failed' | 'running' | 'error' | null;
 
 export interface TestCase {
   id: string;
@@ -7,7 +7,8 @@ export interface TestCase {
   name: string;
   parameter: string;
   executionCount: number;
-  executionResult: ExecutionResult;
+  status: TestCaseStatus;
+  error: string | null;
   executionDuration: number | null;
   executionTime: string | null;
   enabled: boolean;
