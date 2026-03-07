@@ -1,5 +1,5 @@
 import { AppBar, Box, Container, Toolbar, Typography } from '@mui/material';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Link, Navigate, Route, Routes } from 'react-router-dom';
 import ProfilesPage from '../pages/ProfilesPage';
 import ProfileUpsertPage from '../pages/ProfileUpsertPage';
 import SqlParametersPage from '../pages/SqlParametersPage';
@@ -10,11 +10,13 @@ import TestCasesPage from '../pages/TestCasesPage';
 function App() {
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      <AppBar position="static" elevation={0}>
+      <AppBar position="sticky" elevation={0}>
         <Toolbar>
-          <Typography variant="h6" component="h1">
-            SQL Comparer
-          </Typography>
+          <Link to="/" style={{ textDecoration: 'none', color: 'inherit' }}>
+            <Typography variant="h6" component="h1">
+              SQL Compare Tool
+            </Typography>
+          </Link>
         </Toolbar>
       </AppBar>
 
