@@ -1,13 +1,13 @@
 import mssql from 'mssql';
-import type { SqlConnection } from '../../types/profile';
-import { SqlProvider } from './registry';
-import type { QueryRows, SqlExecutionContext } from './types';
-import { BaseSqlProvider } from './types';
+import type { SqlConnection } from '../../../types/profile';
+import { SqlProvider } from '../registry';
+import type { QueryRows, SqlExecutionContext } from '../types';
+import { BaseSqlProvider } from '../types';
 import {
   escapeRegex,
   parsePort,
   renderPreviewSqlWithNamedPlaceholders,
-} from './providerUtils';
+} from '../providerUtils';
 
 function normalizeSqlServerQuery(
   queryText: string,

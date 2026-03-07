@@ -1,13 +1,13 @@
-import mysql from 'mysql2/promise';
-import type { SqlConnection } from '../../types/profile';
-import { SqlProvider } from './registry';
+import { createConnection, type Connection } from 'mysql2/promise';
+import type { SqlConnection } from '../../../types/profile';
+import { SqlProvider } from '../registry';
 import {
   BaseSqlProvider,
   type BoundSqlParameter,
   type QueryRows,
   type SqlExecutionContext,
-} from './types';
-import { escapeRegex, parsePort, renderPreviewSqlWithNamedPlaceholders } from './providerUtils';
+} from '../types';
+import { escapeRegex, parsePort, renderPreviewSqlWithNamedPlaceholders } from '../providerUtils';
 
 function buildMySqlConfig(connection: SqlConnection) {
   return {
@@ -59,7 +59,7 @@ class MySqlProvider extends BaseSqlProvider {
   readonly provider = 'MySQL' as const;
 
   async testConnection(connection: SqlConnection): Promise<void> {
-    const mysqlConnection = await mysql.createConnection(buildMySqlConfig(connection));
+    const mysqlConnection: Connection = await createConnection(buildMySqlConfig(connection));
     try {
       await mysqlConnection.query('SELECT 1 AS ping');
     } finally {
@@ -75,7 +75,7 @@ class MySqlProvider extends BaseSqlProvider {
     boundParams: Record<string, unknown>
   ): Promise<QueryRows> {
     const prepared = prepareMySqlQuery(queryText, sqlParameters, boundParams);
-    const mysqlConnection = await mysql.createConnection(buildMySqlConfig(connection));
+    const mysqlConnection: Connection = await createConnection(buildMySqlConfig(connection));
     try {
       context.throwIfCancelled();
       context.registerCancelHandler(() => {

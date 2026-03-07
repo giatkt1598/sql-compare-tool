@@ -1,6 +1,6 @@
-import './SqlServerProvider';
-import './PostgresProvider';
-import './MySqlProvider';
+import './providers/SqlServerProvider';
+import './providers/PostgresProvider';
+import './providers/MySqlProvider';
 
 export {
   getRegisteredSqlProviders,

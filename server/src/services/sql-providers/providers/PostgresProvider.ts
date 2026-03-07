@@ -3,16 +3,16 @@ import {
   type ClientConfig as PgClientConfig,
   type QueryResult as PgQueryResult,
 } from 'pg';
-import type { SqlConnection } from '../../types/profile';
-import type { SqlParameterDataType } from '../../types/sqlParameter';
-import { SqlProvider } from './registry';
+import type { SqlConnection } from '../../../types/profile';
+import type { SqlParameterDataType } from '../../../types/sqlParameter';
+import { SqlProvider } from '../registry';
 import {
   BaseSqlProvider,
   type BoundSqlParameter,
   type QueryRows,
   type SqlExecutionContext,
-} from './types';
-import { escapeRegex, parsePort, renderPreviewSqlWithNamedPlaceholders } from './providerUtils';
+} from '../types';
+import { escapeRegex, parsePort, renderPreviewSqlWithNamedPlaceholders } from '../providerUtils';
 
 function buildPostgresConfig(connection: SqlConnection, timeoutMs: number): PgClientConfig {
   const sslMode = String(connection.sslMode ?? 'prefer').toLowerCase();
