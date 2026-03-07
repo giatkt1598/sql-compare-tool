@@ -43,6 +43,7 @@ interface LatestTestCaseResult {
   name: string;
   enabled: boolean;
   compareInOrder: boolean;
+  parallelExecution: boolean;
   autoRunWhenSqlChanges: boolean;
   executionCount: number;
   executionTime: string | null;
@@ -54,6 +55,10 @@ interface LatestTestCaseResult {
   diffPayload: {
     summary: {
       executionTime: string;
+      parallelExecution?: boolean;
+      oldSqlDuration?: number | null;
+      newSqlDuration?: number | null;
+      compareDuration?: number | null;
       error?: string;
       oldCount?: number;
       newCount?: number;
@@ -408,6 +413,30 @@ function TestCaseResultPage() {
                 Execution duration:{' '}
                 {typeof data.executionDuration === 'number'
                   ? `${data.executionDuration.toLocaleString()} ms`
+                  : '-'}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Parallel execution:{' '}
+                {(data.diffPayload.summary.parallelExecution ?? data.parallelExecution)
+                  ? 'On'
+                  : 'Off'}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Old SQL duration:{' '}
+                {typeof data.diffPayload.summary.oldSqlDuration === 'number'
+                  ? `${data.diffPayload.summary.oldSqlDuration.toLocaleString()} ms`
+                  : '-'}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                New SQL duration:{' '}
+                {typeof data.diffPayload.summary.newSqlDuration === 'number'
+                  ? `${data.diffPayload.summary.newSqlDuration.toLocaleString()} ms`
+                  : '-'}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Compare duration:{' '}
+                {typeof data.diffPayload.summary.compareDuration === 'number'
+                  ? `${data.diffPayload.summary.compareDuration.toLocaleString()} ms`
                   : '-'}
               </Typography>
               <Typography variant="body2" color="text.secondary">

@@ -7,6 +7,7 @@ export interface TestCase {
   name: string;
   parameter: string;
   compareInOrder: boolean;
+  parallelExecution: boolean;
   autoRunWhenSqlChanges: boolean;
   executionCount: number;
   status: TestCaseStatus;
@@ -23,6 +24,7 @@ export interface TestCaseFormInput {
   parameter: string;
   enabled: boolean;
   compareInOrder: boolean;
+  parallelExecution: boolean;
   autoRunWhenSqlChanges: boolean;
 }
 
@@ -31,5 +33,6 @@ export const defaultTestCaseFormInput: TestCaseFormInput = {
   parameter: '{}',
   enabled: true,
   compareInOrder: false,
+  parallelExecution: true,
   autoRunWhenSqlChanges: false,
 };

@@ -66,6 +66,7 @@ class TestCaseController {
         name?: string;
         parameter?: string;
         compareInOrder?: boolean;
+        parallelExecution?: boolean;
         autoRunWhenSqlChanges?: boolean;
         executionCount?: number;
         status?: string | null;
@@ -113,6 +114,7 @@ class TestCaseController {
         name: payload.name,
         parameter: payload.parameter ?? '',
         compareInOrder: payload.compareInOrder ?? false,
+        parallelExecution: payload.parallelExecution ?? true,
         autoRunWhenSqlChanges: payload.autoRunWhenSqlChanges ?? false,
         executionCount,
         status: (payload.status ?? null) as NullableTestCaseStatus,
@@ -143,6 +145,7 @@ class TestCaseController {
         name?: string;
         parameter?: string;
         compareInOrder?: boolean;
+        parallelExecution?: boolean;
         autoRunWhenSqlChanges?: boolean;
         executionCount?: number;
         status?: string | null;
@@ -175,6 +178,7 @@ class TestCaseController {
         name: payload.name,
         parameter: payload.parameter,
         compareInOrder: payload.compareInOrder,
+        parallelExecution: payload.parallelExecution,
         autoRunWhenSqlChanges: payload.autoRunWhenSqlChanges,
         executionCount: payload.executionCount,
         status:

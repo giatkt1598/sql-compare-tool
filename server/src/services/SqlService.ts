@@ -14,7 +14,7 @@ import TestCaseRepository from '../repositories/TestCaseRepository';
 import TestCaseEventService from './TestCaseEventService';
 import type { ProfileData, SqlProvider } from '../types/profile';
 import type { SqlParameterData, SqlParameterDataType } from '../types/sqlParameter';
-import type { TestCaseStatus } from '../types/testCase';
+import type { TestCaseData, TestCaseStatus } from '../types/testCase';
 
 type QueryRow = Record<string, unknown>;
 type QueryRows = QueryRow[];
@@ -29,6 +29,10 @@ interface ResultDiffItem {
 interface ResultDiffPayload {
   summary: {
     executionTime: string;
+    parallelExecution?: boolean;
+    oldSqlDuration?: number | null;
+    newSqlDuration?: number | null;
+    compareDuration?: number | null;
     error?: string;
     oldCount?: number;
     newCount?: number;
@@ -64,6 +68,7 @@ interface RunTestCaseDraft {
   parameter?: string;
   enabled?: boolean;
   compareInOrder?: boolean;
+  parallelExecution?: boolean;
 }
 
 interface RunTestCaseOptions {
@@ -84,6 +89,7 @@ interface LatestTestCaseResult {
   name: string;
   enabled: boolean;
   compareInOrder: boolean;
+  parallelExecution: boolean;
   autoRunWhenSqlChanges: boolean;
   executionCount: number;
   executionTime: string | null;
@@ -181,6 +187,7 @@ class SqlService {
     let oldSql = '';
     let newSql = '';
     let rawParams: Record<string, unknown> = {};
+    let effectiveTestCaseSnapshot: TestCaseData | null = null;
 
     try {
       const testCase = TestCaseRepository.getById(testCaseId);
@@ -200,6 +207,15 @@ class SqlService {
         parameter: draft?.parameter ?? testCase.parameter,
         enabled: draft?.enabled ?? testCase.enabled,
         compareInOrder: draft?.compareInOrder ?? testCase.compareInOrder,
+        parallelExecution: draft?.parallelExecution ?? testCase.parallelExecution,
+      };
+      effectiveTestCaseSnapshot = {
+        ...testCase.toJSON(),
+        name: effectiveTestCase.name,
+        parameter: effectiveTestCase.parameter,
+        enabled: effectiveTestCase.enabled,
+        compareInOrder: effectiveTestCase.compareInOrder,
+        parallelExecution: effectiveTestCase.parallelExecution,
       };
 
       TestCaseRepository.update(testCase.id, {
@@ -228,31 +244,40 @@ class SqlService {
       );
       const boundParams = this.mapBoundParameters(sqlParameters, rawParams);
 
-      const oldRows = await this.executeNamedQuery(
-        execution,
-        path.basename(profile.oldSqlFilePath),
-        profile.sqlProvider,
-        profile.sqlConnection,
-        oldSql,
+      const oldQuery = {
+        label: path.basename(profile.oldSqlFilePath),
+        sqlProvider: profile.sqlProvider,
+        connection: profile.sqlConnection,
+        queryText: oldSql,
         sqlParameters,
-        boundParams
-      );
-      const newRows = await this.executeNamedQuery(
-        execution,
-        path.basename(profile.newSqlFilePath),
-        profile.sqlProvider,
-        profile.sqlConnection,
-        newSql,
+        boundParams,
+      };
+      const newQuery = {
+        label: path.basename(profile.newSqlFilePath),
+        sqlProvider: profile.sqlProvider,
+        connection: profile.sqlConnection,
+        queryText: newSql,
         sqlParameters,
-        boundParams
-      );
+        boundParams,
+      };
+      const queryExecution = effectiveTestCase.parallelExecution
+        ? await this.executeQueryPairConcurrently(execution, oldQuery, newQuery)
+        : await this.executeQueryPairSequentially(execution, oldQuery, newQuery);
+      const { oldRows, newRows, oldSqlDuration, newSqlDuration } = queryExecution;
 
       this.throwIfCancelled(execution);
+      const compareStartedAt = Date.now();
       const diffPayload = this.compareQueryResults(
         oldRows,
         newRows,
         executedAt,
-        effectiveTestCase.compareInOrder
+        effectiveTestCase.compareInOrder,
+        {
+          parallelExecution: effectiveTestCase.parallelExecution,
+          oldSqlDuration,
+          newSqlDuration,
+          compareDuration: Date.now() - compareStartedAt,
+        }
       );
       const files = this.writeRunArtifacts(
         profile.name,
@@ -262,6 +287,7 @@ class SqlService {
           oldSql,
           newSql,
           parameterPayload: rawParams,
+          testCasePayload: effectiveTestCaseSnapshot,
           oldRows,
           newRows,
           diffPayload,
@@ -322,7 +348,10 @@ class SqlService {
       };
       const executionDuration = Date.now() - startedAt;
       const errorMessage = error instanceof Error ? error.message : 'Unexpected error';
-      const diffPayload = this.buildErrorDiffPayload(executedAt, errorMessage);
+      const diffPayload = this.buildErrorDiffPayload(executedAt, errorMessage, {
+        parallelExecution: draft?.parallelExecution ?? testCase.parallelExecution,
+        compareDuration: null,
+      });
       const files = this.writeRunArtifacts(
         profile.name,
         effectiveTestCase.name,
@@ -331,6 +360,12 @@ class SqlService {
           oldSql,
           newSql,
           parameterPayload: rawParams,
+          testCasePayload:
+            effectiveTestCaseSnapshot ??
+            {
+              ...testCase.toJSON(),
+              name: effectiveTestCase.name,
+            },
           diffPayload,
         }
       );
@@ -399,6 +434,7 @@ class SqlService {
       name: testCase.name,
       enabled: testCase.enabled,
       compareInOrder: testCase.compareInOrder,
+      parallelExecution: testCase.parallelExecution,
       autoRunWhenSqlChanges: testCase.autoRunWhenSqlChanges,
       executionCount: testCase.executionCount,
       executionTime: testCase.executionTime,
@@ -410,6 +446,10 @@ class SqlService {
       diffPayload: this.readJsonFile<ResultDiffPayload>(diffResultPath, {
         summary: {
           executionTime: testCase.executionTime ?? '',
+          parallelExecution: testCase.parallelExecution,
+          oldSqlDuration: null,
+          newSqlDuration: null,
+          compareDuration: null,
           error: testCase.error ?? undefined,
         },
         differences: [],
@@ -567,6 +607,137 @@ class SqlService {
       const message = error instanceof Error ? error.message : 'Unexpected error';
       throw new Error(`"${queryLabel}": ${message}`, { cause: error });
     }
+  }
+
+  private async executeQueryPairConcurrently(
+    execution: ActiveExecution,
+    oldQuery: {
+      label: string;
+      sqlProvider: SqlProvider;
+      connection: ProfileData['sqlConnection'];
+      queryText: string;
+      sqlParameters: Array<Pick<SqlParameterData, 'name' | 'index' | 'dataType'>>;
+      boundParams: Record<string, unknown>;
+    },
+    newQuery: {
+      label: string;
+      sqlProvider: SqlProvider;
+      connection: ProfileData['sqlConnection'];
+      queryText: string;
+      sqlParameters: Array<Pick<SqlParameterData, 'name' | 'index' | 'dataType'>>;
+      boundParams: Record<string, unknown>;
+    }
+  ): Promise<{
+    oldRows: QueryRows;
+    newRows: QueryRows;
+    oldSqlDuration: number;
+    newSqlDuration: number;
+  }> {
+    const runSingleQuery = async (
+      query: typeof oldQuery,
+      counterpartLabel: string
+    ): Promise<{ rows: QueryRows; duration: number }> => {
+      const startedAt = Date.now();
+      try {
+        const rows = await this.executeNamedQuery(
+          execution,
+          query.label,
+          query.sqlProvider,
+          query.connection,
+          query.queryText,
+          query.sqlParameters,
+          query.boundParams
+        );
+        return {
+          rows,
+          duration: Date.now() - startedAt,
+        };
+      } catch (error) {
+        if (!this.isCancellationError(error)) {
+          this.cancelExecutionOnly(
+            execution,
+            `${counterpartLabel} was cancelled because ${query.label} failed or was interrupted`
+          );
+        }
+        throw error;
+      }
+    };
+
+    const [oldResult, newResult] = await Promise.allSettled([
+      runSingleQuery(oldQuery, newQuery.label),
+      runSingleQuery(newQuery, oldQuery.label),
+    ]);
+
+    if (oldResult.status === 'rejected') {
+      throw oldResult.reason;
+    }
+
+    if (newResult.status === 'rejected') {
+      throw newResult.reason;
+    }
+
+    return {
+      oldRows: oldResult.value.rows,
+      newRows: newResult.value.rows,
+      oldSqlDuration: oldResult.value.duration,
+      newSqlDuration: newResult.value.duration,
+    };
+  }
+
+  private async executeQueryPairSequentially(
+    execution: ActiveExecution,
+    oldQuery: {
+      label: string;
+      sqlProvider: SqlProvider;
+      connection: ProfileData['sqlConnection'];
+      queryText: string;
+      sqlParameters: Array<Pick<SqlParameterData, 'name' | 'index' | 'dataType'>>;
+      boundParams: Record<string, unknown>;
+    },
+    newQuery: {
+      label: string;
+      sqlProvider: SqlProvider;
+      connection: ProfileData['sqlConnection'];
+      queryText: string;
+      sqlParameters: Array<Pick<SqlParameterData, 'name' | 'index' | 'dataType'>>;
+      boundParams: Record<string, unknown>;
+    }
+  ): Promise<{
+    oldRows: QueryRows;
+    newRows: QueryRows;
+    oldSqlDuration: number;
+    newSqlDuration: number;
+  }> {
+    const oldStartedAt = Date.now();
+    const oldRows = await this.executeNamedQuery(
+      execution,
+      oldQuery.label,
+      oldQuery.sqlProvider,
+      oldQuery.connection,
+      oldQuery.queryText,
+      oldQuery.sqlParameters,
+      oldQuery.boundParams
+    );
+    const oldSqlDuration = Date.now() - oldStartedAt;
+    this.throwIfCancelled(execution);
+    const newStartedAt = Date.now();
+    const newRows = await this.executeNamedQuery(
+      execution,
+      newQuery.label,
+      newQuery.sqlProvider,
+      newQuery.connection,
+      newQuery.queryText,
+      newQuery.sqlParameters,
+      newQuery.boundParams
+    );
+    const newSqlDuration = Date.now() - newStartedAt;
+
+    return {
+      oldRows,
+      newRows,
+      oldSqlDuration,
+      newSqlDuration,
+    };
   }
 
   private async testSqlServerConnection(connection: ProfileData['sqlConnection']) {
@@ -769,6 +940,22 @@ class SqlService {
     execution.cancelHandlers.add(cancelHandler);
   }
 
+  private cancelExecutionOnly(execution: ActiveExecution, reason: string): void {
+    if (execution.cancelled) {
+      return;
+    }
+
+    execution.cancelled = true;
+    execution.cancelReason = reason;
+    for (const cancelHandler of execution.cancelHandlers) {
+      try {
+        cancelHandler();
+      } catch {
+        // Ignore cancellation handler errors.
+      }
+    }
+  }
+
   private throwIfCancelled(execution: ActiveExecution): void {
     if (execution.cancelled) {
       throw this.createCancellationError(execution);
@@ -915,19 +1102,31 @@ class SqlService {
     oldRows: QueryRows,
     newRows: QueryRows,
     executionTime: string,
-    compareInOrder: boolean
+    compareInOrder: boolean,
+    executionMetadata: {
+      parallelExecution: boolean;
+      oldSqlDuration: number;
+      newSqlDuration: number;
+      compareDuration: number;
+    }
   ): ResultDiffPayload {
     if (compareInOrder) {
-      return this.compareQueryResultsInOrder(oldRows, newRows, executionTime);
+      return this.compareQueryResultsInOrder(oldRows, newRows, executionTime, executionMetadata);
     }
 
-    return this.compareQueryResultsIgnoreOrder(oldRows, newRows, executionTime);
+    return this.compareQueryResultsIgnoreOrder(oldRows, newRows, executionTime, executionMetadata);
   }
 
   private compareQueryResultsInOrder(
     oldRows: QueryRows,
     newRows: QueryRows,
-    executionTime: string
+    executionTime: string,
+    executionMetadata: {
+      parallelExecution: boolean;
+      oldSqlDuration: number;
+      newSqlDuration: number;
+      compareDuration: number;
+    }
   ): ResultDiffPayload {
     const differences: ResultDiffItem[] = [];
     let onlyInOldCount = 0;
@@ -975,6 +1174,10 @@ class SqlService {
     return {
       summary: {
         executionTime,
+        parallelExecution: executionMetadata.parallelExecution,
+        oldSqlDuration: executionMetadata.oldSqlDuration,
+        newSqlDuration: executionMetadata.newSqlDuration,
+        compareDuration: executionMetadata.compareDuration,
         oldCount: oldRows.length,
         newCount: newRows.length,
         differenceCount: differences.length,
@@ -990,7 +1193,13 @@ class SqlService {
   private compareQueryResultsIgnoreOrder(
     oldRows: QueryRows,
     newRows: QueryRows,
-    executionTime: string
+    executionTime: string,
+    executionMetadata: {
+      parallelExecution: boolean;
+      oldSqlDuration: number;
+      newSqlDuration: number;
+      compareDuration: number;
+    }
   ): ResultDiffPayload {
     const differences: ResultDiffItem[] = [];
     let onlyInOldCount = 0;
@@ -1040,6 +1249,10 @@ class SqlService {
     return {
       summary: {
         executionTime,
+        parallelExecution: executionMetadata.parallelExecution,
+        oldSqlDuration: executionMetadata.oldSqlDuration,
+        newSqlDuration: executionMetadata.newSqlDuration,
+        compareDuration: executionMetadata.compareDuration,
         oldCount: oldRows.length,
         newCount: newRows.length,
         differenceCount: differences.length,
@@ -1085,10 +1298,23 @@ class SqlService {
       .map((item) => item.row);
   }
 
-  private buildErrorDiffPayload(executionTime: string, error: string): ResultDiffPayload {
+  private buildErrorDiffPayload(
+    executionTime: string,
+    error: string,
+    metadata?: {
+      parallelExecution?: boolean;
+      oldSqlDuration?: number | null;
+      newSqlDuration?: number | null;
+      compareDuration?: number | null;
+    }
+  ): ResultDiffPayload {
     return {
       summary: {
         executionTime,
+        parallelExecution: metadata?.parallelExecution,
+        oldSqlDuration: metadata?.oldSqlDuration ?? null,
+        newSqlDuration: metadata?.newSqlDuration ?? null,
+        compareDuration: metadata?.compareDuration ?? null,
         error,
       },
       differences: [],
@@ -1126,6 +1352,7 @@ class SqlService {
       oldSql: string;
       newSql: string;
       parameterPayload: Record<string, unknown>;
+      testCasePayload: TestCaseData;
       diffPayload: ResultDiffPayload;
       oldRows?: QueryRows;
       newRows?: QueryRows;
@@ -1154,6 +1381,7 @@ class SqlService {
     const oldSqlPath = path.join(dataDir, 'old.sql');
     const newSqlPath = path.join(dataDir, 'new.sql');
     const parameterPath = path.join(dataDir, 'parameter.json');
+    const testCasePath = path.join(dataDir, 'test-case.json');
 
     if (payload.oldRows) {
       fs.writeFileSync(oldResultPath, JSON.stringify(payload.oldRows, null, 2), 'utf8');
@@ -1169,6 +1397,7 @@ class SqlService {
       fs.writeFileSync(newSqlPath, payload.newSql, 'utf8');
     }
     fs.writeFileSync(parameterPath, JSON.stringify(payload.parameterPayload, null, 2), 'utf8');
+    fs.writeFileSync(testCasePath, JSON.stringify(payload.testCasePayload, null, 2), 'utf8');
 
     return {
       oldResultPath,

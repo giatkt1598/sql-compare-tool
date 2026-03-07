@@ -1,4 +1,5 @@
 import ArrowBackOutlinedIcon from '@mui/icons-material/ArrowBackOutlined';
+import HelpOutlineOutlinedIcon from '@mui/icons-material/HelpOutlineOutlined';
 import PlayArrowOutlinedIcon from '@mui/icons-material/PlayArrowOutlined';
 import {
   Alert,
@@ -10,8 +11,8 @@ import {
   Paper,
   Snackbar,
   Stack,
-  Switch,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import { useEffect, useMemo, useState } from 'react';
@@ -92,6 +93,7 @@ function TestCaseUpsertPage() {
             parameter: testCase.parameter || buildSampleJson(parameters),
             enabled: testCase.enabled,
             compareInOrder: testCase.compareInOrder,
+            parallelExecution: testCase.parallelExecution,
             autoRunWhenSqlChanges: testCase.autoRunWhenSqlChanges,
           });
         } else {
@@ -102,6 +104,7 @@ function TestCaseUpsertPage() {
             name: '',
             parameter: '',
             compareInOrder: false,
+            parallelExecution: true,
             autoRunWhenSqlChanges: false,
             executionCount: 0,
             status: null,
@@ -143,6 +146,7 @@ function TestCaseUpsertPage() {
           name: formValue.name,
           parameter: formValue.parameter,
           compareInOrder: formValue.compareInOrder,
+          parallelExecution: formValue.parallelExecution,
           autoRunWhenSqlChanges: existingTestCase.autoRunWhenSqlChanges,
           executionCount: existingTestCase.executionCount,
           status: existingTestCase.status,
@@ -161,6 +165,7 @@ function TestCaseUpsertPage() {
           name: formValue.name,
           parameter: formValue.parameter,
           compareInOrder: formValue.compareInOrder,
+          parallelExecution: formValue.parallelExecution,
           autoRunWhenSqlChanges: false,
           executionCount: 0,
           enabled: formValue.enabled,
@@ -203,6 +208,7 @@ function TestCaseUpsertPage() {
         parameter: formValue.parameter,
         enabled: formValue.enabled,
         compareInOrder: formValue.compareInOrder,
+        parallelExecution: formValue.parallelExecution,
       });
 
       setExistingTestCase((current) =>
@@ -318,7 +324,7 @@ function TestCaseUpsertPage() {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <FormControlLabel
                 control={
-                  <Switch
+                  <Checkbox
                     checked={formValue.compareInOrder}
                     onChange={(event) =>
                       setFormValue((current) => ({
@@ -330,6 +336,31 @@ function TestCaseUpsertPage() {
                 }
                 label="Compare in order"
               />
+
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={formValue.parallelExecution}
+                      onChange={(event) =>
+                        setFormValue((current) => ({
+                          ...current,
+                          parallelExecution: event.target.checked,
+                        }))
+                      }
+                    />
+                  }
+                  label="Parallel execution"
+                  sx={{ mr: 0.5 }}
+                />
+                <Tooltip title="Run old SQL and new SQL at the same time to reduce total execution time. This is faster, but it increases database load because both queries run concurrently.">
+                  <HelpOutlineOutlinedIcon
+                    fontSize="small"
+                    color="action"
+                    sx={{ cursor: 'help' }}
+                  />
+                </Tooltip>
+              </Box>
 
               <FormControlLabel
                 control={

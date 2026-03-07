@@ -37,6 +37,7 @@ export const sqlApi = {
       parameter?: string;
       enabled?: boolean;
       compareInOrder?: boolean;
+      parallelExecution?: boolean;
     }
   ) =>
     request<{
@@ -56,6 +57,10 @@ export const sqlApi = {
       };
       diffSummary: {
         executionTime: string;
+        parallelExecution?: boolean;
+        oldSqlDuration?: number | null;
+        newSqlDuration?: number | null;
+        compareDuration?: number | null;
         error?: string;
         oldCount?: number;
         newCount?: number;
@@ -76,6 +81,7 @@ export const sqlApi = {
       name: string;
       enabled: boolean;
       compareInOrder: boolean;
+      parallelExecution: boolean;
       autoRunWhenSqlChanges: boolean;
       executionCount: number;
       executionTime: string | null;
@@ -87,6 +93,10 @@ export const sqlApi = {
       diffPayload: {
         summary: {
           executionTime: string;
+          parallelExecution?: boolean;
+          oldSqlDuration?: number | null;
+          newSqlDuration?: number | null;
+          compareDuration?: number | null;
           error?: string;
           oldCount?: number;
           newCount?: number;
