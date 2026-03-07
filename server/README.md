@@ -1,216 +1,174 @@
-# SQL Comparer - Server Backend
+# SQL Comparer Server
 
-Một backend API được xây dựng bằng Express + TypeScript với cấu trúc kiến trúc tương tự ASP.NET (Repository, Service, Controller pattern).
+[Main README](../README.md) | [Documentation Index](../documents/README.md)
 
-## 📁 Cấu trúc Project
+The server is an Express + TypeScript backend that manages profiles, SQL parameters, test cases, SQL execution, result comparison, backup and restore, and generated artifacts.
 
-```
+## What The Server Is Responsible For
+
+- Store metadata in JSON files
+- Expose REST APIs for profile and test case management
+- Test database connections
+- Execute old and new SQL queries
+- Compare result sets
+- Write execution artifacts to disk
+- Watch SQL files for auto-run scenarios
+- Stream realtime test case events to the client
+- Export and restore profile backups
+
+## Runtime Stack
+
+- Node.js
+- Express
+- TypeScript
+- Swagger UI
+- JSON file storage
+- `mssql`
+- `pg`
+- `mysql2`
+
+## Project Structure
+
+```text
 server/
 ├── src/
-│   ├── models/              # Models (Entities)
-│   │   └── Profile.ts       # Profile model với validation
-│   │
-│   ├── repositories/        # Repository Layer
-│   │   └── ProfileRepository.ts  # Xử lý dữ liệu từ file JSON
-│   │
-│   ├── services/            # Business Logic Layer
-│   │   └── ProfileService.ts    # Services cho Profile
-│   │
-│   ├── controllers/         # Controllers
-│   │   └── ProfileController.ts  # HTTP handlers
-│   │
-│   ├── routes/              # Routes
-│   │   └── profileRoutes.ts # Profile route definitions
-│   │
-│   ├── middleware/          # Middleware
-│   │   └── errorHandler.ts  # Error handling middleware
-│   │
-│   ├── config/              # Configuration
-│   │   └── fileConstants.ts # File path constants
-│   │
-│   └── index.ts             # Main server source
-│
-├── data/                    # JSON Data Storage
-│   └── profiles.json        # Profiles storage
-│
-├── .env                     # Environment variables
-├── .gitignore              # Git ignore
-├── package.json            # Dependencies
-└── README.md              # Documentation
+│   ├── config/
+│   ├── controllers/
+│   ├── middleware/
+│   ├── models/
+│   ├── repositories/
+│   ├── routes/
+│   ├── services/
+│   │   └── sql-providers/
+│   ├── types/
+│   └── index.ts
+├── data/
+├── docs/
+└── package.json
 ```
 
-## 🏗️ Architecture Pattern
+## Architecture
 
-### Layer Structure (Similar to ASP.NET)
-
-```
+```text
 HTTP Request
-    ↓
-Routes (profileRoutes.js)
-    ↓
-Controller (ProfileController) → Business Logic
-    ↓
-Service (ProfileService) → Validation, Logic
-    ↓
-Repository (ProfileRepository) → Data Access
-    ↓
-Data Store (JSON files)
+  -> Route
+  -> Controller
+  -> Service
+  -> Repository
+  -> JSON file storage
 ```
 
-## 📦 API Endpoints
+Provider-specific SQL execution is isolated in `src/services/sql-providers/`.
 
-### Profile CRUD
+## Key Modules
 
-| Method | Endpoint                            | Description                   |
-| ------ | ----------------------------------- | ----------------------------- |
-| GET    | `/api/profiles`                     | Lấy danh sách tất cả profiles |
-| GET    | `/api/profiles/:id`                 | Lấy profile theo ID           |
-| POST   | `/api/profiles`                     | Tạo profile mới               |
-| PUT    | `/api/profiles/:id`                 | Cập nhật profile              |
-| DELETE | `/api/profiles/:id`                 | Xóa profile                   |
-| POST   | `/api/profiles/:id/test-connection` | Kiểm tra kết nối database     |
+### Profiles
 
-## 🚀 Cách chạy
+Manage:
 
-### Development (hot reload)
+- provider
+- connection settings
+- SQL file paths
+
+### SQL Parameters
+
+Define the input schema used by test cases.
+
+### Test Cases
+
+Store:
+
+- parameter payload
+- execution status
+- execution counters
+- auto-run setting
+- compare mode
+- parallel execution setting
+
+### SQL Execution
+
+The SQL service:
+
+- loads profile and test case data
+- reads SQL files
+- binds parameters
+- executes queries
+- compares old and new results
+- persists artifacts and execution metadata
+
+## API Overview
+
+Main route groups:
+
+- `/api/profiles`
+- `/api/sql-parameters`
+- `/api/test-cases`
+- `/api/sql`
+
+Swagger UI:
+
+- `http://localhost:5000/api-docs`
+
+## Development
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Run backend only:
 
 ```bash
 npm run dev
 ```
 
-Server sẽ chạy tại `http://localhost:5000`
+Run backend + frontend from the server package:
 
-### Build + Production
+```bash
+npm run dev:fullstack
+```
+
+## Build and Serve
+
+Build server:
 
 ```bash
 npm run build
-npm start
 ```
 
-## 📝 Profile Data Structure
-
-```javascript
-{
-  "id": "profile-1709782400000-abc12345",
-  "name": "My Profile",
-  "description": "Profile description",
-  "oldSqlFilePath": "/path/to/old-query.sql",
-  "newSqlFilePath": "/path/to/new-query.sql",
-  "sqlProvider": "SqlServer",  // 'SqlServer' | 'Postgres'
-  "sqlConnection": {
-    "host": "localhost",
-    "port": 1433,
-    "database": "mydb",
-    "username": "sa",
-    "password": "password"
-  },
-  "testCases": [],           // Danh sách test case IDs
-  "createdAt": "2026-03-06T10:30:00.000Z",
-  "updatedAt": "2026-03-06T10:30:00.000Z"
-}
-```
-
-## 📌 Example API Calls
-
-### 1. Create Profile
+Build server + client:
 
 ```bash
-curl -X POST http://localhost:5000/api/profiles \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "My First Profile",
-    "description": "Comparing queries",
-    "oldSqlFilePath": "/sql/old_query.sql",
-    "newSqlFilePath": "/sql/new_query.sql",
-    "sqlProvider": "SqlServer",
-    "sqlConnection": {
-      "host": "localhost",
-      "port": 1433,
-      "database": "TestDB",
-      "username": "sa",
-      "password": "YourPassword"
-    }
-  }'
+npm run build:all
 ```
 
-### 2. Get All Profiles
+Run built backend:
 
 ```bash
-curl http://localhost:5000/api/profiles
+npm run start
 ```
 
-### 3. Get Profile by ID
+Run built backend + built frontend preview:
 
 ```bash
-curl http://localhost:5000/api/profiles/profile-1709782400000-abc12345
+npm run serve
 ```
 
-### 4. Update Profile
+## Data Storage
 
-```bash
-curl -X PUT http://localhost:5000/api/profiles/profile-1709782400000-abc12345 \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Updated Profile Name"
-  }'
-```
+Metadata is stored under `server/data/`:
 
-### 5. Delete Profile
+- `profiles.json`
+- `sql-parameters.json`
+- `test-cases.json`
 
-```bash
-curl -X DELETE http://localhost:5000/api/profiles/profile-1709782400000-abc12345
-```
+Execution artifacts are stored under:
 
-## 🔄 Response Format
+- `server/data/results/<profileId>/<testCaseId>/...`
 
-### Success Response
+## Notes
 
-```json
-{
-  "success": true,
-  "data": {
-    /* data object */
-  },
-  "message": "Action completed successfully"
-}
-```
-
-### Error Response
-
-```json
-{
-  "success": false,
-  "message": "Error description"
-}
-```
-
-## 🛠️ Technologies
-
-- **Framework**: Express
-- **Language**: TypeScript
-- **Runtime**: Node.js
-- **Storage**: JSON files (no database)
-- **CORS**: Enabled for frontend communication
-- **Dev Runtime**: `tsx`
-- **Build Tool**: `tsup`
-
-## 📚 Key Features
-
-✅ RESTful API Design  
-✅ Clean Architecture (Repository, Service, Controller)  
-✅ Input Validation  
-✅ Error Handling  
-✅ JSON File Storage  
-✅ CORS Support  
-✅ Environment Variables Support
-
-## 🔄 Next Steps
-
-- [ ] Implement test connection functionality
-- [ ] Add SQL query execution
-- [ ] Implement test case management
-- [ ] Add result comparison engine
-- [ ] Add file upload for SQL files
-- [ ] Add authentication/authorization
-- [ ] Add logging system
-- [ ] Add unit tests
+- This backend does not use a metadata database
+- SQL Server Windows Authentication depends on the host machine driver environment
+- Profile deletion also removes dependent test cases, SQL parameters, and result folders

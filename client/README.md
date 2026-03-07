@@ -1,73 +1,117 @@
-# React + TypeScript + Vite
+# SQL Comparer Client
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+[Main README](../README.md) | [Documentation Index](../documents/README.md)
 
-Currently, two official plugins are available:
+The client is a React + Vite application for managing profiles, SQL parameters, test cases, execution results, and backup and restore workflows.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Main Features
 
-## React Compiler
+- Profile management
+- Provider-specific connection forms
+- SQL connection testing
+- SQL parameter editor
+- Test case creation and editing
+- Latest result viewer with diff table
+- Realtime status updates
+- Backup and restore actions
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Technology Stack
 
-## Expanding the ESLint configuration
+- React
+- TypeScript
+- Vite
+- Material UI
+- Axios
+- React Router
+- Day.js
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Project Structure
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```text
+client/
+├── src/
+│   ├── apis/
+│   ├── app/
+│   ├── components/
+│   ├── hooks/
+│   ├── models/
+│   ├── pages/
+│   └── styles/
+├── public/
+└── package.json
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Pages
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+### Profiles
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+Create and manage connection profiles for different database providers.
+
+### SQL Parameters
+
+Define the parameter schema for a profile.
+
+### Test Cases
+
+Manage test case inputs and execution options such as:
+
+- compare in order
+- parallel execution
+- auto run when SQL changes
+
+### Latest Test Case Result
+
+Inspect:
+
+- execution status
+- execution durations
+- old and new result differences
+- latest error details
+
+## Development
+
+Install dependencies:
+
+```bash
+npm install
 ```
+
+Run the client in development mode:
+
+```bash
+npm run dev
+```
+
+Default URL:
+
+- `http://localhost:5173`
+
+By default, the client calls the backend at:
+
+- `http://localhost:5000`
+
+You can override this with:
+
+```bash
+VITE_API_BASE_URL=http://your-server:5000
+```
+
+## Build and Preview
+
+Build the client:
+
+```bash
+npm run build
+```
+
+Preview the built output:
+
+```bash
+npm run preview
+```
+
+## UI Notes
+
+- Provider-specific connection forms are rendered dynamically
+- The latest result page supports large diff tables with pagination
+- Error messages are normalized from API responses before display
