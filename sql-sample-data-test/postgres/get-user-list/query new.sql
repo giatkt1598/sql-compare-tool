@@ -19,11 +19,11 @@ JOIN organizations o ON o.id = oa.organization_id
 JOIN user_location_access ula ON ula.user_id = u.id
 JOIN location_access la ON la.id = ula.location_access_id
 JOIN locations l ON l.id = la.location_id
-WHERE (@id IS NULL OR u.id = @id)
-  AND (@email IS NULL OR u.email ILIKE '%' || @email || '%')
-  AND (@enabled IS NULL OR u.enabled IS TRUE)
-  AND (@org_access IS NULL OR TRUE)
-  AND (@location_access IS NULL OR TRUE)
+WHERE ($1 IS NULL OR u.id = $1)
+  AND ($2 IS NULL OR u.email ILIKE '%' || $2 || '%')
+  AND ($3 IS NULL OR u.enabled IS TRUE)
+  AND ($4 IS NULL OR TRUE)
+  AND ($5 IS NULL OR TRUE)
   AND oa.enabled = TRUE
   AND la.enabled = TRUE
   AND l.is_active = TRUE

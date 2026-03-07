@@ -12,7 +12,7 @@ import {
   type QueryRows,
   type SqlExecutionContext,
 } from '../types';
-import { escapeRegex, parsePort, renderPreviewSqlWithNamedPlaceholders } from '../providerUtils';
+import { escapeRegex, parsePort, toSqlLiteral } from '../providerUtils';
 
 function buildPostgresConfig(connection: SqlConnection, timeoutMs: number): PgClientConfig {
   const sslMode = String(connection.sslMode ?? 'prefer').toLowerCase();
@@ -107,10 +107,20 @@ function preparePostgresQuery(
       const parameter = sortedParameters[i];
       values.push(parameter ? (boundParams[parameter.name] ?? null) : null);
     }
+
+    preparedText = preparedText.replace(/\$(\d+)(?!\s*::)\b/g, (fullMatch, rawIndex: string) => {
+      const placeholderIndex = Number(rawIndex);
+      const parameter = sortedParameters[placeholderIndex - 1];
+      if (!parameter) {
+        return fullMatch;
+      }
+
+      return buildPostgresTypedPlaceholder(placeholderIndex, parameter.dataType);
+    });
   }
 
   return {
-    text: preparedText.replace(/\s+/g, ' ').trim(),
+    text: preparedText,
     values,
   };
 }
@@ -122,6 +132,31 @@ function isPostgresCancellationError(error: unknown): boolean {
 
   const pgError = error as Error & { code?: string };
   return pgError.code === '57014' || /cancel/i.test(pgError.message);
+}
+
+function renderPostgresPreviewSql(
+  queryText: string,
+  sqlParameters: BoundSqlParameter[],
+  boundParams: Record<string, unknown>
+): string {
+  const prepared = preparePostgresQuery(queryText, sqlParameters, boundParams);
+  const sortedParameters = [...sqlParameters].sort((a, b) => a.index - b.index);
+  let previewText = prepared.text;
+
+  for (let i = sortedParameters.length; i >= 1; i -= 1) {
+    const parameter = sortedParameters[i - 1];
+    if (!parameter) {
+      continue;
+    }
+
+    const literal = toSqlLiteral(boundParams[parameter.name], parameter.dataType, 'Postgres');
+    previewText = previewText.replace(
+      new RegExp(`\\$${i}(::[a-zA-Z0-9_]+)?`, 'g'),
+      literal
+    );
+  }
+
+  return previewText;
 }
 
 @SqlProvider('Postgres')
@@ -185,7 +220,7 @@ class PostgresProvider extends BaseSqlProvider {
     sqlParameters: BoundSqlParameter[],
     boundParams: Record<string, unknown>
   ): string {
-    return renderPreviewSqlWithNamedPlaceholders('Postgres', queryText, sqlParameters, boundParams);
+    return renderPostgresPreviewSql(queryText, sqlParameters, boundParams);
   }
 }
 
