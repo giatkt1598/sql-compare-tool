@@ -1,4 +1,9 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { FILE_PATHS } from '../config/fileConstants';
 import ProfileRepository from '../repositories/ProfileRepository';
+import SqlParameterRepository from '../repositories/SqlParameterRepository';
+import TestCaseRepository from '../repositories/TestCaseRepository';
 import type { CreateProfileInput, SqlProvider, UpdateProfileInput } from '../types/profile';
 
 class ProfileService {
@@ -43,6 +48,17 @@ class ProfileService {
       throw new Error(`Profile with ID ${id} not found`);
     }
 
+    SqlParameterRepository.deleteByProfileId(id);
+    TestCaseRepository.deleteByProfileId(id);
+
+    const profileResultsDir = path.join(
+      FILE_PATHS.RESULTS,
+      this.toSafePathSegment(existingProfile.name)
+    );
+    if (fs.existsSync(profileResultsDir)) {
+      fs.rmSync(profileResultsDir, { recursive: true, force: true });
+    }
+
     ProfileRepository.delete(id);
     return { message: 'Profile deleted successfully', id };
   }
@@ -66,6 +82,15 @@ class ProfileService {
       postgresCount: ProfileRepository.countByProvider('Postgres'),
       usedProviders: ProfileRepository.getUsedProviders(),
     };
+  }
+
+  private toSafePathSegment(value: string): string {
+    const sanitized = value
+      .trim()
+      // eslint-disable-next-line no-control-regex
+      .replace(/[<>:"/\\|?*\x00-\x1F]/g, '-')
+      .replace(/\s+/g, ' ');
+    return sanitized || 'unnamed';
   }
 }
 

@@ -1,3 +1,6 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { FILE_PATHS } from '../config/fileConstants';
 import ProfileRepository from '../repositories/ProfileRepository';
 import TestCaseRepository from '../repositories/TestCaseRepository';
 import type { CreateTestCaseInput, UpdateTestCaseInput } from '../types/testCase';
@@ -66,8 +69,34 @@ class TestCaseService {
   }
 
   delete(id: string) {
+    const existing = TestCaseRepository.getById(id);
+    if (!existing) {
+      throw new Error(`TestCase with ID ${id} not found`);
+    }
+
+    const profile = ProfileRepository.getById(existing.profileId);
+    if (profile) {
+      const testCaseResultsDir = path.join(
+        FILE_PATHS.RESULTS,
+        this.toSafePathSegment(profile.name),
+        this.toSafePathSegment(existing.name)
+      );
+      if (fs.existsSync(testCaseResultsDir)) {
+        fs.rmSync(testCaseResultsDir, { recursive: true, force: true });
+      }
+    }
+
     TestCaseRepository.delete(id);
     return { message: 'TestCase deleted successfully', id };
+  }
+
+  private toSafePathSegment(value: string): string {
+    const sanitized = value
+      .trim()
+      // eslint-disable-next-line no-control-regex
+      .replace(/[<>:"/\\|?*\x00-\x1F]/g, '-')
+      .replace(/\s+/g, ' ');
+    return sanitized || 'unnamed';
   }
 }
 

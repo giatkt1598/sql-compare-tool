@@ -16,6 +16,10 @@ class TestCaseRepository extends BaseRepository<TestCase, ReturnType<TestCase['t
       (testCase) => testCase.profileId === profileId && testCase.orderIndex === orderIndex
     );
   }
+
+  deleteByProfileId(profileId: string): number {
+    return this.deleteWhere((testCase) => testCase.profileId === profileId);
+  }
 }
 
 export default new TestCaseRepository();

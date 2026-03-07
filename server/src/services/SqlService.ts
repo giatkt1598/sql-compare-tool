@@ -677,13 +677,26 @@ class SqlService {
     let onlyInOldCount = 0;
     let onlyInNewCount = 0;
     let changedCount = 0;
+    const unmatchedOld = this.collectUnmatchedRows(oldRows, newRows);
+    const unmatchedNew = this.collectUnmatchedRows(newRows, oldRows);
+    const maxLength = Math.max(unmatchedOld.length, unmatchedNew.length);
 
-    const maxLength = Math.max(oldRows.length, newRows.length);
     for (let i = 0; i < maxLength; i += 1) {
-      const oldRecord = oldRows[i] ?? null;
-      const newRecord = newRows[i] ?? null;
+      const oldRecord = unmatchedOld[i] ?? null;
+      const newRecord = unmatchedNew[i] ?? null;
 
-      if (oldRecord && !newRecord) {
+      if (oldRecord && newRecord) {
+        changedCount += 1;
+        differences.push({
+          index: i,
+          type: 'changed',
+          oldRecord,
+          newRecord,
+        });
+        continue;
+      }
+
+      if (oldRecord) {
         onlyInOldCount += 1;
         differences.push({
           index: i,
@@ -694,23 +707,12 @@ class SqlService {
         continue;
       }
 
-      if (!oldRecord && newRecord) {
+      if (newRecord) {
         onlyInNewCount += 1;
         differences.push({
           index: i,
           type: 'onlyInNew',
           oldRecord: null,
-          newRecord,
-        });
-        continue;
-      }
-
-      if (oldRecord && newRecord && !this.deepEqual(oldRecord, newRecord)) {
-        changedCount += 1;
-        differences.push({
-          index: i,
-          type: 'changed',
-          oldRecord,
           newRecord,
         });
       }
@@ -729,6 +731,39 @@ class SqlService {
       },
       differences,
     };
+  }
+
+  private collectUnmatchedRows(sourceRows: QueryRows, targetRows: QueryRows): QueryRows {
+    const targetBuckets = new Map<string, QueryRow[]>();
+
+    for (const row of targetRows) {
+      const key = this.toCanonicalKey(row);
+      const bucket = targetBuckets.get(key) ?? [];
+      bucket.push(row);
+      targetBuckets.set(key, bucket);
+    }
+
+    const unmatched: Array<{ key: string; row: QueryRow }> = [];
+
+    for (const row of sourceRows) {
+      const key = this.toCanonicalKey(row);
+      const bucket = targetBuckets.get(key);
+      if (bucket && bucket.length > 0) {
+        bucket.pop();
+        if (bucket.length === 0) {
+          targetBuckets.delete(key);
+        } else {
+          targetBuckets.set(key, bucket);
+        }
+        continue;
+      }
+
+      unmatched.push({ key, row });
+    }
+
+    return unmatched
+      .sort((left, right) => left.key.localeCompare(right.key))
+      .map((item) => item.row);
   }
 
   private buildErrorDiffPayload(executionTime: string, error: string): ResultDiffPayload {
@@ -758,6 +793,10 @@ class SqlService {
     }
 
     return value;
+  }
+
+  private toCanonicalKey(value: unknown): string {
+    return JSON.stringify(this.canonicalize(value));
   }
 
   private writeRunArtifacts(

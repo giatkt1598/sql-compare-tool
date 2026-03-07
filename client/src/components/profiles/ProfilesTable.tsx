@@ -28,9 +28,7 @@ function ProfilesTable(props: ProfilesTableProps) {
   if (profiles.length === 0) {
     return (
       <Paper sx={{ p: 3 }}>
-        <Typography variant="body1">
-          No profile found. Create your first profile to start CRUD flow.
-        </Typography>
+        <Typography variant="body1">No data.</Typography>
       </Paper>
     );
   }

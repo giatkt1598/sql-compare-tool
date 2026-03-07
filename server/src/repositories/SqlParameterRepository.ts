@@ -42,6 +42,10 @@ class SqlParameterRepository extends BaseRepository<
     this.saveAllRaw([...remaining, ...created.map((item) => item.toJSON())]);
     return created;
   }
+
+  deleteByProfileId(profileId: string): number {
+    return this.deleteWhere((parameter) => parameter.profileId === profileId);
+  }
 }
 
 export default new SqlParameterRepository();
