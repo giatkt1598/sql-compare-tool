@@ -646,6 +646,7 @@ class SqlService {
   private toSafePathSegment(value: string): string {
     const sanitized = value
       .trim()
+      // eslint-disable-next-line no-control-regex
       .replace(/[<>:"/\\|?*\x00-\x1F]/g, '-')
       .replace(/\s+/g, ' ');
     return sanitized || 'unnamed';
