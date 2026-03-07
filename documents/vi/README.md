@@ -2,89 +2,118 @@
 
 [English](../../README.md) | Tiếng Việt | [日本語](../jp/README.md)
 
-SQL Comparer là công cụ web dùng để xác nhận một câu SQL mới có trả ra cùng dữ liệu với câu SQL cũ hay không, dựa trên nhiều test case đầu vào.
+SQL Comparer là công cụ giúp bạn so sánh kết quả giữa hai câu SQL:
 
-## Mục đích sử dụng
+- câu SQL cũ: `old.sql`
+- câu SQL mới: `new.sql`
 
-Tool này phù hợp cho các tình huống:
+Mục tiêu của tool là trả lời câu hỏi: sau khi sửa hoặc tối ưu SQL, kết quả trả về có còn giống với logic cũ hay không.
 
-- refactor câu SQL
-- migrate logic truy vấn
-- đối chiếu kết quả giữa query cũ và query mới
-- kiểm tra regression dữ liệu
-- theo dõi thời gian thực thi
+## Tool này dùng để làm gì
+
+SQL Comparer phù hợp trong các trường hợp sau:
+
+- refactor câu SQL nhưng vẫn phải giữ nguyên kết quả
+- thay đổi logic truy vấn và cần kiểm tra lại dữ liệu
+- so sánh query cũ và query mới trước khi đưa lên production
+- kiểm tra chênh lệch dữ liệu theo nhiều bộ input khác nhau
+- theo dõi thời gian chạy giữa hai phiên bản SQL
 
 ## Chức năng chính
 
-- Quản lý `Profile` kết nối database
-- Gắn hai file SQL cho mỗi profile:
+- Quản lý `Profile` kết nối đến database
+- Mỗi profile gắn với 2 file SQL:
   - `old.sql`
   - `new.sql`
 - Khai báo danh sách `SQL Parameters`
-- Tạo nhiều `Test Case`
-- Chạy một test case hoặc chạy nhiều test case
-- So sánh kết quả và sinh file diff
-- Theo dõi trạng thái chạy:
-  - success
-  - failed
-  - running
-  - error
+- Tạo nhiều `Test Case` để truyền input khác nhau
+- Chạy riêng từng test case hoặc chạy nhiều test case cùng lúc
+- So sánh dữ liệu trả về giữa SQL cũ và SQL mới
+- Lưu lịch sử chạy và file kết quả để xem lại
+- Hỗ trợ tự động chạy lại khi file SQL thay đổi
 
-## Khái niệm chính
+## Các khái niệm cần biết
 
-### Profile
+### 1. Profile
 
-Profile lưu:
+Profile là nơi chứa toàn bộ cấu hình của một bài toán so sánh SQL.
 
-- loại database provider
-- thông tin connection
-- đường dẫn file SQL cũ
-- đường dẫn file SQL mới
+Một profile thường gồm:
 
-### SQL Parameter
+- loại database đang dùng
+- thông tin kết nối database
+- đường dẫn đến file SQL cũ
+- đường dẫn đến file SQL mới
 
-SQL Parameter mô tả schema input cho test case, ví dụ:
+Hiểu đơn giản: mỗi profile là một cấu hình so sánh hoàn chỉnh.
+
+### 2. SQL Parameter
+
+SQL Parameter là danh sách tham số đầu vào mà test case sẽ sử dụng.
+
+Ví dụ:
 
 - `id`
 - `email`
 - `enabled`
 
-### Test Case
+Phần này giúp bạn định nghĩa trước kiểu dữ liệu và tên biến để truyền vào câu SQL.
 
-Test Case lưu:
+### 3. Test Case
+
+Test Case là một bộ dữ liệu đầu vào cụ thể để chạy thử SQL.
+
+Mỗi test case thường có:
 
 - tên test case
-- dữ liệu parameter dạng JSON
-- các option chạy như:
-  - compare in order
-  - parallel execution
-  - auto run when SQL changes
+- dữ liệu parameter ở dạng JSON
+- các tùy chọn chạy như:
+  - so sánh có quan tâm thứ tự record hay không
+  - có chạy song song 2 câu SQL hay không
+  - có tự động chạy lại khi file SQL thay đổi hay không
 
-## Cách dùng nhanh
+## Luồng sử dụng cơ bản
 
-1. Tạo profile
-2. Chọn provider và nhập connection
+Nếu dùng lần đầu, bạn nên đi theo thứ tự này:
+
+1. Tạo `Profile`
+2. Chọn provider và nhập thông tin kết nối database
 3. Chọn file `old.sql` và `new.sql`
-4. Khai báo SQL parameters
-5. Tạo test case
-6. Bấm run
-7. Xem màn `Latest Test Case Result`
+4. Tạo danh sách `SQL Parameters`
+5. Tạo `Test Case`
+6. Chạy test case
+7. Xem màn hình `Latest Test Case Result` để kiểm tra chênh lệch
 
-## File kết quả
+## Kết quả sau khi chạy được lưu ở đâu
 
-Mỗi lần chạy sẽ sinh artifact trong `server/data/results/...`, thường gồm:
+Mỗi lần chạy, server sẽ tạo file kết quả trong thư mục:
 
-- `old-result.json`
-- `new-result.json`
-- `diff-result.json`
-- `data/parameter.json`
-- `data/test-case.json`
-- `data/old.sql`
-- `data/new.sql`
+`server/data/results/...`
 
-## Cách chạy
+Thông thường sẽ có các file sau:
 
-### Chạy development
+- `old-result.json`: dữ liệu trả về từ SQL cũ
+- `new-result.json`: dữ liệu trả về từ SQL mới
+- `diff-result.json`: phần chênh lệch giữa hai kết quả
+- `data/parameter.json`: bộ parameter đã dùng khi chạy
+- `data/test-case.json`: snapshot của test case tại thời điểm chạy
+- `data/old.sql`: nội dung SQL cũ tại thời điểm chạy
+- `data/new.sql`: nội dung SQL mới tại thời điểm chạy
+
+Nhờ đó bạn có thể mở lại kết quả cũ để kiểm tra hoặc đối chiếu về sau.
+
+## Cách chạy project
+
+### Cài dependency
+
+```bash
+cd server && npm install
+cd ../client && npm install
+```
+
+### Chạy ở chế độ development
+
+Từ thư mục gốc của project:
 
 ```bash
 npm run dev
@@ -96,14 +125,16 @@ Mặc định:
 - Backend: `http://localhost:5000`
 - Swagger: `http://localhost:5000/api-docs`
 
-### Build và chạy bản dist
+### Build và chạy bản đã build
 
 ```bash
 npm run build
 npm run serve
 ```
 
-## Provider đang hỗ trợ
+Chế độ này sẽ chạy code từ thư mục `dist`, gần với môi trường thực tế hơn so với `dev`.
+
+## Các database provider hiện đang hỗ trợ
 
 - SQL Server
 - PostgreSQL
@@ -111,7 +142,6 @@ npm run serve
 
 ## Tài liệu liên quan
 
-- [Tổng quan tiếng Anh](../../README.md)
-- [Bản tiếng Nhật](../jp/README.md)
+- [README tiếng Anh](../../README.md)
+- [README tiếng Nhật](../jp/README.md)
 - [Mục lục tài liệu](../README.md)
-
