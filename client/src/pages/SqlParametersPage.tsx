@@ -219,7 +219,7 @@ function SqlParametersPage() {
                   <TableRow>
                     <TableCell colSpan={4}>
                       <Typography color="text.secondary">
-                        No parameter row. Click Add Row.
+                        No parameter row. Click Add Parameter.
                       </Typography>
                     </TableCell>
                   </TableRow>
@@ -289,7 +289,7 @@ function SqlParametersPage() {
               variant="outlined"
               onClick={handleAddRow}
             >
-              Add Row
+              Add Parameter
             </Button>
           </Stack>
         </Stack>
