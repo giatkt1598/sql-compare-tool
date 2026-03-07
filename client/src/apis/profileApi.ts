@@ -1,4 +1,6 @@
-import type { Profile, ProfileFormInput } from '../models/profile';
+import type { Profile } from '../models/profile';
+
+export type ProfilePayload = Omit<Profile, 'id' | 'createdAt' | 'updatedAt'>;
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
 const API_PROFILE_URL = `${API_BASE_URL}/api/profiles`;
@@ -23,12 +25,12 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
 export const profileApi = {
   getAll: () => request<Profile[]>(API_PROFILE_URL),
   getById: (id: string) => request<Profile>(`${API_PROFILE_URL}/${id}`),
-  create: (payload: ProfileFormInput) =>
+  create: (payload: ProfilePayload) =>
     request<Profile>(API_PROFILE_URL, {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
-  update: (id: string, payload: Partial<ProfileFormInput>) =>
+  update: (id: string, payload: Partial<ProfilePayload>) =>
     request<Profile>(`${API_PROFILE_URL}/${id}`, {
       method: 'PUT',
       body: JSON.stringify(payload),

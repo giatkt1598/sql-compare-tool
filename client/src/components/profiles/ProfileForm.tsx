@@ -10,17 +10,14 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
+import { useRef, type ChangeEvent, type SyntheticEvent } from 'react';
 import CheckIcon from '@mui/icons-material/Check';
-import { useEffect, useRef, type ChangeEvent, type ReactElement, type SyntheticEvent } from 'react';
+import { type ProfileFormInput, type SqlConnection, type SqlProvider } from '../../models/profile';
 import {
+  connectionFieldConfigByProvider,
+  connectionFieldConfigs,
   getDefaultConnection,
-  type ProfileFormInput,
-  type SqlConnection,
-  type SqlProvider,
-} from '../../models/profile';
-import PostgresConnectionFields from './connection-fields/PostgresConnectionFields';
-import SqlServerConnectionFields from './connection-fields/SqlServerConnectionFields';
-import type { ConnectionFieldsProps } from './connection-fields/types';
+} from './connection-fields/providerRegistry';
 
 interface ProfileFormProps {
   mode: 'create' | 'edit';
@@ -35,15 +32,6 @@ interface ProfileFormProps {
   onCancel: () => void;
 }
 
-const sqlProviders: SqlProvider[] = ['SqlServer', 'Postgres'];
-const connectionFieldsByProvider: Record<
-  SqlProvider,
-  (props: ConnectionFieldsProps) => ReactElement
-> = {
-  SqlServer: SqlServerConnectionFields,
-  Postgres: PostgresConnectionFields,
-};
-
 function ProfileForm(props: ProfileFormProps) {
   const {
     mode,
@@ -57,32 +45,26 @@ function ProfileForm(props: ProfileFormProps) {
     onTestConnection,
     onCancel,
   } = props;
-  const providerConnectionCacheRef = useRef<Record<SqlProvider, SqlConnection>>({
-    SqlServer: getDefaultConnection('SqlServer'),
-    Postgres: getDefaultConnection('Postgres'),
-  });
   const oldSqlFileInputRef = useRef<HTMLInputElement | null>(null);
   const newSqlFileInputRef = useRef<HTMLInputElement | null>(null);
-  const ConnectionFields = connectionFieldsByProvider[formValue.sqlProvider];
-
-  useEffect(() => {
-    providerConnectionCacheRef.current[formValue.sqlProvider] = {
-      ...formValue.sqlConnection,
-    };
-  }, [formValue.sqlProvider, formValue.sqlConnection]);
+  const providerConfig = connectionFieldConfigByProvider[formValue.sqlProvider];
+  const ConnectionFields = providerConfig.component;
 
   const handleProviderTabChange = (_event: SyntheticEvent, provider: SqlProvider) => {
-    providerConnectionCacheRef.current[formValue.sqlProvider] = {
-      ...formValue.sqlConnection,
-    };
-
+    const cachedConnection = formValue.providerConnections[provider];
     const nextConnection =
-      providerConnectionCacheRef.current[provider] ?? getDefaultConnection(provider);
+      cachedConnection && Object.keys(cachedConnection).length > 0
+        ? cachedConnection
+        : getDefaultConnection(provider);
 
     onChange({
       ...formValue,
       sqlProvider: provider,
       sqlConnection: { ...nextConnection },
+      providerConnections: {
+        ...formValue.providerConnections,
+        [provider]: { ...nextConnection },
+      },
     });
   };
 
@@ -92,10 +74,25 @@ function ProfileForm(props: ProfileFormProps) {
       ...connection,
     };
 
-    providerConnectionCacheRef.current[formValue.sqlProvider] = nextConnection;
     onChange({
       ...formValue,
       sqlConnection: nextConnection,
+      providerConnections: {
+        ...formValue.providerConnections,
+        [formValue.sqlProvider]: nextConnection,
+      },
+    });
+  };
+
+  const handleResetConnection = () => {
+    const nextConnection = getDefaultConnection(formValue.sqlProvider);
+    onChange({
+      ...formValue,
+      sqlConnection: nextConnection,
+      providerConnections: {
+        ...formValue.providerConnections,
+        [formValue.sqlProvider]: nextConnection,
+      },
     });
   };
 
@@ -218,14 +215,20 @@ function ProfileForm(props: ProfileFormProps) {
             variant="fullWidth"
             sx={{ mb: 2 }}
           >
-            {sqlProviders.map((provider) => (
+            {connectionFieldConfigs.map((providerConfig) => (
               <Tab
-                key={provider}
-                value={provider}
-                label={provider === 'SqlServer' ? 'SQL Server' : 'Postgres'}
+                key={providerConfig.provider}
+                value={providerConfig.provider}
+                label={providerConfig.label}
               />
             ))}
           </Tabs>
+
+          <Stack direction="row" justifyContent="flex-end" sx={{ mb: 1.5 }}>
+            <Button size="small" onClick={handleResetConnection} disabled={loading}>
+              Reset to default
+            </Button>
+          </Stack>
 
           <ConnectionFields connection={formValue.sqlConnection} onChange={updateConnection} />
         </Box>

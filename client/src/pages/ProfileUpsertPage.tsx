@@ -6,9 +6,10 @@ import { sqlApi } from '../apis/sqlApi';
 import ProfileForm from '../components/profiles/ProfileForm';
 import {
   defaultProfileFormInput,
+  toProfilePayload,
   toProfileFormInput,
-  type ProfileFormInput,
-} from '../models/profile';
+} from '../components/profiles/profileFormDefaults';
+import { type ProfileFormInput } from '../models/profile';
 
 interface ToastState {
   open: boolean;
@@ -62,10 +63,11 @@ function ProfileUpsertPage() {
     setIsSaving(true);
     setErrorMessage(null);
     try {
+      const payload = toProfilePayload(formValue);
       if (isEditMode && id) {
-        await profileApi.update(id, formValue);
+        await profileApi.update(id, payload);
       } else {
-        await profileApi.create(formValue);
+        await profileApi.create(payload);
       }
       navigate('/profiles');
     } catch (error) {
@@ -80,9 +82,11 @@ function ProfileUpsertPage() {
     setErrorMessage(null);
     setIsConnectionSuccess(false);
     try {
+      const activeConnection =
+        formValue.providerConnections[formValue.sqlProvider] ?? formValue.sqlConnection;
       const result = await sqlApi.testConnection({
         sqlProvider: formValue.sqlProvider,
-        sqlConnection: formValue.sqlConnection,
+        sqlConnection: activeConnection,
       });
       setIsConnectionSuccess(true);
       setToast({

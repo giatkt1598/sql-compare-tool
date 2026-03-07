@@ -1,44 +1,14 @@
-import {
-  Box,
-  FormControlLabel,
-  IconButton,
-  InputAdornment,
-  MenuItem,
-  Stack,
-  Switch,
-  TextField,
-} from '@mui/material';
-import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
+import { Box, IconButton, InputAdornment, Stack, TextField } from '@mui/material';
 import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined';
+import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import { useState } from 'react';
-import type { SqlServerAuthType } from '../../../models/profile';
 import type { ConnectionFieldsProps } from './types';
 
-const sqlServerAuthTypes: SqlServerAuthType[] = ['WindowsAuth', 'SqlServerAuth'];
-
-function SqlServerConnectionFields({ connection, onChange }: ConnectionFieldsProps) {
+export default function MySqlConnectionFields({ connection, onChange }: ConnectionFieldsProps) {
   const [showPassword, setShowPassword] = useState(false);
 
   return (
-    <Stack spacing={1.5}>
-      <TextField
-        size="small"
-        select
-        label="Auth Type"
-        value={connection.authType ?? 'SqlServerAuth'}
-        onChange={(event) =>
-          onChange({
-            authType: event.target.value as SqlServerAuthType,
-          })
-        }
-      >
-        {sqlServerAuthTypes.map((authType) => (
-          <MenuItem key={authType} value={authType}>
-            {authType === 'WindowsAuth' ? 'Windows Auth' : 'SQL Server Auth'}
-          </MenuItem>
-        ))}
-      </TextField>
-
+    <Stack spacing={1.5} width="100%">
       <Box
         sx={{
           display: 'grid',
@@ -61,6 +31,15 @@ function SqlServerConnectionFields({ connection, onChange }: ConnectionFieldsPro
           onChange={(event) => onChange({ port: event.target.value })}
         />
       </Box>
+
+      <TextField
+        size="small"
+        label="Database"
+        required
+        value={connection.database}
+        onChange={(event) => onChange({ database: event.target.value })}
+      />
+
       <Box
         sx={{
           display: 'grid',
@@ -102,29 +81,7 @@ function SqlServerConnectionFields({ connection, onChange }: ConnectionFieldsPro
             },
           }}
         />
-
-        <FormControlLabel
-          control={
-            <Switch
-              checked={Boolean(connection.encrypt)}
-              onChange={(event) => onChange({ encrypt: event.target.checked })}
-            />
-          }
-          label="Encrypt"
-        />
-
-        <FormControlLabel
-          control={
-            <Switch
-              checked={Boolean(connection.trustServerCertificate)}
-              onChange={(event) => onChange({ trustServerCertificate: event.target.checked })}
-            />
-          }
-          label="Trust Server Certificate"
-        />
       </Box>
     </Stack>
   );
 }
-
-export default SqlServerConnectionFields;
