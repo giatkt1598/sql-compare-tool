@@ -1,4 +1,5 @@
-import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography } from '@mui/material';
+import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, Typography } from '@mui/material';
+import SqlCodeEditor from '../common/SqlCodeEditor';
 
 type ProfileSqlInputDialogProps = {
   open: boolean;
@@ -24,14 +25,10 @@ function ProfileSqlInputDialog({
             Paste SQL content directly. If SQL content is provided, the server will use it instead
             of reading from the file path.
           </Typography>
-          <TextField
-            multiline
-            minRows={16}
-            fullWidth
+          <SqlCodeEditor
             value={value}
-            onChange={(event) => onChange(event.target.value)}
-            placeholder="Paste SQL here..."
-            autoFocus
+            onChange={onChange}
+            minHeight={420}
           />
         </Stack>
       </DialogContent>

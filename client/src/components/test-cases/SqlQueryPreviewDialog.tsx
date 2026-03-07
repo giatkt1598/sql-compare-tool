@@ -1,13 +1,13 @@
 import {
+  Box,
   Dialog,
   DialogContent,
   DialogTitle,
-  Stack,
   Tab,
   Tabs,
-  TextField,
   Typography,
 } from '@mui/material';
+import SqlCodeEditor from '../common/SqlCodeEditor';
 
 export interface SqlQueryPreviewDialogValue {
   sqlProvider: string;
@@ -36,6 +36,8 @@ function SqlQueryPreviewDialog({
   onTabChange,
   onValueChange,
 }: SqlQueryPreviewDialogProps) {
+  const editorValue = activeTab === 'old' ? (value?.oldSql ?? '') : (value?.newSql ?? '');
+
   return (
     <Dialog
       open={open}
@@ -59,6 +61,7 @@ function SqlQueryPreviewDialog({
           display: 'flex',
           flexDirection: 'column',
           minHeight: 0,
+          overflow: 'hidden',
         }}
       >
         <Tabs value={activeTab} onChange={(_event, nextValue: 'old' | 'new') => onTabChange(nextValue)}>
@@ -66,41 +69,36 @@ function SqlQueryPreviewDialog({
           <Tab label="New SQL" value="new" />
         </Tabs>
 
-        <Stack spacing={1.5} sx={{ mt: 2, flex: 1, minHeight: 0 }}>
+        <Box
+          sx={{
+            mt: 2,
+            flex: 1,
+            minHeight: 0,
+            display: 'grid',
+            gridTemplateRows: 'auto 1fr',
+            gap: 1.5,
+          }}
+        >
           <Typography variant="body2" color="text.secondary">
             {activeTab === 'old'
               ? (value?.oldSqlSourceLabel ?? value?.oldSqlFilePath ?? '')
               : (value?.newSqlSourceLabel ?? value?.newSqlFilePath ?? '')}
           </Typography>
 
-          <TextField
-            value={activeTab === 'old' ? (value?.oldSql ?? '') : (value?.newSql ?? '')}
-            onChange={(event) =>
+          <SqlCodeEditor
+            value={editorValue}
+            minHeight="100%"
+            onChange={(nextValue) =>
               onValueChange(
                 value
                   ? activeTab === 'old'
-                    ? { ...value, oldSql: event.target.value }
-                    : { ...value, newSql: event.target.value }
+                    ? { ...value, oldSql: nextValue }
+                    : { ...value, newSql: nextValue }
                   : value
               )
             }
-            multiline
-            fullWidth
-            sx={{
-              flex: 1,
-              '& .MuiInputBase-root': {
-                height: '100%',
-                alignItems: 'stretch',
-              },
-              '& .MuiInputBase-input': {
-                height: '100% !important',
-                overflow: 'auto !important',
-                fontFamily: 'Consolas, Monaco, monospace',
-                fontSize: 13,
-              },
-            }}
           />
-        </Stack>
+        </Box>
       </DialogContent>
     </Dialog>
   );
