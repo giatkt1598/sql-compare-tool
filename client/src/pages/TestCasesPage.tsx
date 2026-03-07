@@ -653,10 +653,11 @@ function TestCasesPage() {
                         )}
                       </TableCell>
 
-                      <TableCell onClick={(event) => event.stopPropagation()}>
+                      <TableCell>
                         <Checkbox
                           checked={item.parallelExecution}
                           disabled={updatingTestCaseIds.includes(item.id)}
+                          onClick={(event) => event.stopPropagation()}
                           onChange={(event: ChangeEvent<HTMLInputElement>) =>
                             void handleToggleParallelExecution(item, event.target.checked)
                           }
