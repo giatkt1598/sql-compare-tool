@@ -9,6 +9,7 @@ export interface TestCaseData {
   orderIndex: number;
   name: string;
   parameter: string;
+  executionCount: number;
   executionResult: NullableTestCaseExecutionResult;
   executionDuration: number | null;
   executionTime: string | null;

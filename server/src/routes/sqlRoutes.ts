@@ -169,6 +169,9 @@ router.post('/run-test-case', SqlController.runTestCase.bind(SqlController));
  *         diffSummary:
  *           type: object
  *           properties:
+ *             executionTime:
+ *               type: string
+ *               format: date-time
  *             oldCount:
  *               type: integer
  *             newCount:

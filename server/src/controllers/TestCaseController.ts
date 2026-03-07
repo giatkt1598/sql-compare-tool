@@ -59,6 +59,7 @@ class TestCaseController {
         orderIndex?: number;
         name?: string;
         parameter?: string;
+        executionCount?: number;
         executionResult?: string | null;
         executionDuration?: number | null;
         executionTime?: string | null;
@@ -93,12 +94,16 @@ class TestCaseController {
       }
 
       const orderIndex = Number(payload.orderIndex);
+      const executionCount = Number.isInteger(payload.executionCount)
+        ? Number(payload.executionCount)
+        : 0;
 
       const created = TestCaseService.create({
         profileId: payload.profileId,
         orderIndex,
         name: payload.name,
         parameter: payload.parameter ?? '',
+        executionCount,
         executionResult: (payload.executionResult ?? null) as NullableTestCaseExecutionResult,
         executionDuration:
           payload.executionDuration === undefined ? null : payload.executionDuration,
@@ -125,6 +130,7 @@ class TestCaseController {
         orderIndex?: number;
         name?: string;
         parameter?: string;
+        executionCount?: number;
         executionResult?: string | null;
         executionDuration?: number | null;
         executionTime?: string | null;
@@ -153,6 +159,7 @@ class TestCaseController {
         orderIndex: payload.orderIndex,
         name: payload.name,
         parameter: payload.parameter,
+        executionCount: payload.executionCount,
         executionResult:
           payload.executionResult !== undefined
             ? (payload.executionResult as NullableTestCaseExecutionResult)

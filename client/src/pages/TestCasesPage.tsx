@@ -110,6 +110,7 @@ function TestCasesPage() {
           testCase.id === item.id
             ? {
                 ...testCase,
+                executionCount: result.executionCount,
                 executionResult: result.executionResult,
                 executionDuration: result.executionDuration,
                 executionTime: result.executionTime,
@@ -221,7 +222,11 @@ function TestCasesPage() {
                       <TableCell>{item.orderIndex}</TableCell>
                       <TableCell>{item.name}</TableCell>
                       <TableCell>{item.enabled ? 'Yes' : 'No'}</TableCell>
-                      <TableCell>{item.executionDuration ?? '-'}</TableCell>
+                      <TableCell>
+                        {item.executionDuration
+                          ? `${item.executionDuration.toLocaleString()} ms`
+                          : '-'}
+                      </TableCell>
                       <TableCell>
                         {item.executionTime ? (
                           <Stack spacing={0.25}>

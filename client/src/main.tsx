@@ -7,12 +7,12 @@ import { appTheme } from './app/theme';
 import './styles/globals.css';
 
 createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <ThemeProvider theme={appTheme}>
-      <CssBaseline />
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
-    </ThemeProvider>
-  </StrictMode>
+  // <StrictMode>
+  <ThemeProvider theme={appTheme}>
+    <CssBaseline />
+    <BrowserRouter>
+      <App />
+    </BrowserRouter>
+  </ThemeProvider>
+  // </StrictMode>
 );

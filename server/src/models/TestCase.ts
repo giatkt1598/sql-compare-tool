@@ -11,6 +11,7 @@ class TestCase implements TestCaseData {
   orderIndex: number;
   name: string;
   parameter: string;
+  executionCount: number;
   executionResult: TestCaseData['executionResult'];
   executionDuration: number | null;
   executionTime: string | null;
@@ -24,6 +25,9 @@ class TestCase implements TestCaseData {
     this.orderIndex = Number.isFinite(Number(data.orderIndex)) ? Number(data.orderIndex) : 0;
     this.name = data.name || '';
     this.parameter = data.parameter || '';
+    this.executionCount = Number.isFinite(Number(data.executionCount))
+      ? Number(data.executionCount)
+      : 0;
     this.executionResult = data.executionResult ?? null;
     this.executionDuration =
       data.executionDuration === null
@@ -54,6 +58,10 @@ class TestCase implements TestCaseData {
 
     if (!this.name || this.name.trim() === '') {
       errors.push('name is required');
+    }
+
+    if (!Number.isInteger(this.executionCount) || this.executionCount < 0) {
+      errors.push('executionCount must be an integer and greater than or equal to 0');
     }
 
     if (
@@ -91,6 +99,7 @@ class TestCase implements TestCaseData {
       orderIndex: this.orderIndex,
       name: this.name,
       parameter: this.parameter,
+      executionCount: this.executionCount,
       executionResult: this.executionResult,
       executionDuration: this.executionDuration,
       executionTime: this.executionTime,

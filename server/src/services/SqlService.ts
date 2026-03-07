@@ -22,6 +22,7 @@ interface ResultDiffItem {
 
 interface ResultDiffPayload {
   summary: {
+    executionTime: string;
     oldCount: number;
     newCount: number;
     differenceCount: number;
@@ -38,6 +39,7 @@ interface RunTestCaseResult {
   message: string;
   testCaseId: string;
   profileId: string;
+  executionCount: number;
   executionResult: TestCaseExecutionResult;
   executionDuration: number;
   executionTime: string;
@@ -93,6 +95,8 @@ class SqlService {
       throw new Error(`Profile with ID ${testCase.profileId} not found`);
     }
 
+    const nextExecutionCount = testCase.executionCount + 1;
+
     try {
       const oldSql = this.readSqlFile(profile.oldSqlFilePath, 'oldSqlFilePath');
       const newSql = this.readSqlFile(profile.newSqlFilePath, 'newSqlFilePath');
@@ -118,8 +122,8 @@ class SqlService {
         boundParams
       );
 
-      const diffPayload = this.compareQueryResults(oldRows, newRows);
-      const files = this.writeRunArtifacts(profile.id, testCase.id, executedAt, {
+      const diffPayload = this.compareQueryResults(oldRows, newRows, executedAt);
+      const files = this.writeRunArtifacts(profile.name, testCase.name, nextExecutionCount, {
         oldRows,
         newRows,
         diffPayload,
@@ -131,6 +135,7 @@ class SqlService {
         : 'failed';
 
       TestCaseRepository.update(testCase.id, {
+        executionCount: nextExecutionCount,
         executionResult,
         executionDuration,
         executionTime: executedAt,
@@ -141,6 +146,7 @@ class SqlService {
         message: 'Run test case completed',
         testCaseId: testCase.id,
         profileId: profile.id,
+        executionCount: nextExecutionCount,
         executionResult,
         executionDuration,
         executionTime: executedAt,
@@ -152,6 +158,7 @@ class SqlService {
 
       try {
         TestCaseRepository.update(testCase.id, {
+          executionCount: nextExecutionCount,
           executionResult: 'failed',
           executionDuration,
           executionTime: executedAt,
@@ -515,7 +522,11 @@ class SqlService {
     return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 
-  private compareQueryResults(oldRows: QueryRows, newRows: QueryRows): ResultDiffPayload {
+  private compareQueryResults(
+    oldRows: QueryRows,
+    newRows: QueryRows,
+    executionTime: string
+  ): ResultDiffPayload {
     const differences: ResultDiffItem[] = [];
     let onlyInOldCount = 0;
     let onlyInNewCount = 0;
@@ -561,6 +572,7 @@ class SqlService {
 
     return {
       summary: {
+        executionTime,
         oldCount: oldRows.length,
         newCount: newRows.length,
         differenceCount: differences.length,
@@ -593,9 +605,9 @@ class SqlService {
   }
 
   private writeRunArtifacts(
-    profileId: string,
-    testCaseId: string,
-    executedAt: string,
+    profileName: string,
+    testCaseName: string,
+    executionCount: number,
     payload: {
       oldRows: QueryRows;
       newRows: QueryRows;
@@ -606,13 +618,19 @@ class SqlService {
     newResultPath: string;
     diffResultPath: string;
   } {
-    const timestampTag = executedAt.replace(/[:.]/g, '-');
-    const runDir = path.join(FILE_PATHS.RESULTS, profileId, testCaseId);
+    const safeProfileName = this.toSafePathSegment(profileName);
+    const safeTestCaseName = this.toSafePathSegment(testCaseName);
+    const runDir = path.join(
+      FILE_PATHS.RESULTS,
+      safeProfileName,
+      safeTestCaseName,
+      `${safeTestCaseName}-${executionCount}`
+    );
     fs.mkdirSync(runDir, { recursive: true });
 
-    const oldResultPath = path.join(runDir, `old-result-${timestampTag}.json`);
-    const newResultPath = path.join(runDir, `new-result-${timestampTag}.json`);
-    const diffResultPath = path.join(runDir, `diff-result-${timestampTag}.json`);
+    const oldResultPath = path.join(runDir, 'old-result.json');
+    const newResultPath = path.join(runDir, 'new-result.json');
+    const diffResultPath = path.join(runDir, 'diff-result.json');
 
     fs.writeFileSync(oldResultPath, JSON.stringify(payload.oldRows, null, 2), 'utf8');
     fs.writeFileSync(newResultPath, JSON.stringify(payload.newRows, null, 2), 'utf8');
@@ -623,6 +641,14 @@ class SqlService {
       newResultPath,
       diffResultPath,
     };
+  }
+
+  private toSafePathSegment(value: string): string {
+    const sanitized = value
+      .trim()
+      .replace(/[<>:"/\\|?*\x00-\x1F]/g, '-')
+      .replace(/\s+/g, ' ');
+    return sanitized || 'unnamed';
   }
 }
 

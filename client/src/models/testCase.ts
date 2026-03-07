@@ -6,6 +6,7 @@ export interface TestCase {
   orderIndex: number;
   name: string;
   parameter: string;
+  executionCount: number;
   executionResult: ExecutionResult;
   executionDuration: number | null;
   executionTime: string | null;
