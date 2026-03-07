@@ -181,7 +181,13 @@ function SqlParametersPage() {
         </Stack>
       </Stack>
 
-      <Paper sx={{ p: 2, bgcolor: 'grey.50' }}>
+      <Paper
+        sx={{
+          p: 2,
+          bgcolor: 'action.hover',
+          transition: 'background-color 220ms ease, border-color 220ms ease',
+        }}
+      >
         <Typography variant="body2" color="text.secondary">
           Field Array Mode: editing this table and clicking Save All will replace all SqlParameters
           of this profile on server.

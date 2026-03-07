@@ -26,9 +26,22 @@ function App({ colorMode, onToggleColorMode }: AppProps) {
       <AppBar position="sticky" elevation={0}>
         <Toolbar>
           <Link to="/" style={{ textDecoration: 'none', color: 'inherit' }}>
-            <Typography variant="h6" component="h1">
-              SQL Compare Tool
-            </Typography>
+            <Stack direction="row" spacing={1.25} alignItems="center">
+              <Box
+                component="img"
+                src="/sql-compare-icon.svg"
+                alt="SQL Compare Tool"
+                sx={{
+                  width: 30,
+                  height: 30,
+                  borderRadius: 1,
+                  boxShadow: '0 8px 18px rgba(0, 0, 0, 0.24)',
+                }}
+              />
+              <Typography variant="h6" component="h1">
+                SQL Compare Tool
+              </Typography>
+            </Stack>
           </Link>
           <Box sx={{ flexGrow: 1 }} />
           <Stack direction="row" spacing={0.5} alignItems="center">
