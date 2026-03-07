@@ -1,6 +1,11 @@
 import type { Request, Response } from 'express';
 import ProfileService from '../services/ProfileService';
-import type { CreateProfileInput, SqlProvider, UpdateProfileInput } from '../types/profile';
+import { getRegisteredSqlProviders, isRegisteredSqlProvider } from '../services/sql-providers';
+import {
+  type CreateProfileInput,
+  type SqlProvider,
+  type UpdateProfileInput,
+} from '../types/profile';
 
 class ProfileController {
   getAllProfiles(_req: Request, res: Response): void {
@@ -37,13 +42,10 @@ class ProfileController {
         return;
       }
 
-      if (
-        !profileData.sqlProvider ||
-        !['SqlServer', 'Postgres'].includes(profileData.sqlProvider)
-      ) {
+      if (!profileData.sqlProvider || !isRegisteredSqlProvider(profileData.sqlProvider)) {
         res.status(400).json({
           success: false,
-          message: 'SQL Provider must be either SqlServer or Postgres',
+          message: `SQL Provider must be one of: ${getRegisteredSqlProviders().join(', ')}`,
         });
         return;
       }
@@ -165,10 +167,10 @@ class ProfileController {
     try {
       const provider = req.params.provider as SqlProvider;
 
-      if (!['SqlServer', 'Postgres'].includes(provider)) {
+      if (!isRegisteredSqlProvider(provider)) {
         res.status(400).json({
           success: false,
-          message: 'Invalid provider. Must be SqlServer or Postgres',
+          message: `Invalid provider. Must be one of: ${getRegisteredSqlProviders().join(', ')}`,
         });
         return;
       }

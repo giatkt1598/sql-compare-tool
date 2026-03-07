@@ -1,4 +1,9 @@
-import type { ValidationResult, ProfileData, CreateProfileInput } from '../types/profile';
+import { getRegisteredSqlProviders, isRegisteredSqlProvider } from '../services/sql-providers';
+import {
+  type ValidationResult,
+  type ProfileData,
+  type CreateProfileInput,
+} from '../types/profile';
 
 class Profile implements ProfileData {
   id: string;
@@ -51,8 +56,8 @@ class Profile implements ProfileData {
       errors.push('New SQL file path is required');
     }
 
-    if (!this.sqlProvider || !['SqlServer', 'Postgres'].includes(this.sqlProvider)) {
-      errors.push('SQL Provider must be either SqlServer or Postgres');
+    if (!this.sqlProvider || !isRegisteredSqlProvider(this.sqlProvider)) {
+      errors.push(`SQL Provider must be one of: ${getRegisteredSqlProviders().join(', ')}`);
     }
 
     if (!this.sqlConnection.host || this.sqlConnection.host.trim() === '') {

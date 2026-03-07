@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import SqlService from '../services/SqlService';
+import { getRegisteredSqlProviders, isRegisteredSqlProvider } from '../services/sql-providers';
 import type { SqlProvider } from '../types/profile';
 
 class SqlController {
@@ -8,10 +9,10 @@ class SqlController {
       const sqlProvider = req.body?.sqlProvider as SqlProvider | undefined;
       const sqlConnection = req.body?.sqlConnection;
 
-      if (!sqlProvider || !['SqlServer', 'Postgres'].includes(sqlProvider)) {
+      if (!sqlProvider || !isRegisteredSqlProvider(sqlProvider)) {
         res.status(400).json({
           success: false,
-          message: 'SQL Provider must be either SqlServer or Postgres',
+          message: `SQL Provider must be one of: ${getRegisteredSqlProviders().join(', ')}`,
         });
         return;
       }

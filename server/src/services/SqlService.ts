@@ -1,12 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { Response } from 'express';
-import mssql from 'mssql';
-import {
-  Client as PgClient,
-  type ClientConfig as PgClientConfig,
-  type QueryResult as PgQueryResult,
-} from 'pg';
 import { FILE_PATHS } from '../config/fileConstants';
 import ProfileRepository from '../repositories/ProfileRepository';
 import SqlParameterRepository from '../repositories/SqlParameterRepository';
@@ -15,9 +9,12 @@ import TestCaseEventService from './TestCaseEventService';
 import type { ProfileData, SqlProvider } from '../types/profile';
 import type { SqlParameterData, SqlParameterDataType } from '../types/sqlParameter';
 import type { TestCaseData, TestCaseStatus } from '../types/testCase';
-
-type QueryRow = Record<string, unknown>;
-type QueryRows = QueryRow[];
+import { getSqlProviderAdapter } from './sql-providers';
+import type {
+  QueryRow,
+  QueryRows,
+  SqlExecutionContext,
+} from './sql-providers/types';
 
 interface ResultDiffItem {
   index: number;
@@ -168,24 +165,13 @@ class SqlService {
       throw new Error('Database username is required');
     }
 
-    if (sqlProvider === 'SqlServer') {
-      await this.testSqlServerConnection(connection);
-    } else if (sqlProvider === 'Postgres') {
-      await this.testPostgresConnection(connection);
-    } else {
-      throw new Error(`Unsupported SQL provider: ${sqlProvider}`);
-    }
+    await getSqlProviderAdapter(sqlProvider).testConnection(connection);
 
     return {
       success: true,
       message: `Connection to ${sqlProvider} successful`,
       timestamp: new Date().toISOString(),
     };
-  }
-
-  private parsePort(value: unknown, fallback: number): number {
-    const parsed = Number.parseInt(String(value ?? fallback), 10);
-    return Number.isNaN(parsed) ? fallback : parsed;
   }
 
   async runTestCase(
@@ -688,62 +674,11 @@ class SqlService {
     sqlParameters: Array<Pick<SqlParameterData, 'name' | 'index' | 'dataType'>>,
     boundParams: Record<string, unknown>
   ): string {
-    let previewText =
-      sqlProvider === 'SqlServer'
-        ? this.normalizeSqlServerQuery(queryText, sqlParameters)
-        : queryText;
-
-    for (const parameter of [...sqlParameters].sort((a, b) => a.index - b.index)) {
-      const escapedName = this.escapeRegex(parameter.name);
-      const literal = this.toSqlLiteral(boundParams[parameter.name], parameter.dataType, sqlProvider);
-
-      if (sqlProvider === 'SqlServer') {
-        previewText = previewText.replace(new RegExp(`@${escapedName}\\b`, 'g'), literal);
-        continue;
-      }
-
-      previewText = previewText.replace(new RegExp(`@${escapedName}\\b`, 'g'), literal);
-      previewText = previewText.replace(new RegExp(`:${escapedName}\\b`, 'g'), literal);
-      previewText = previewText.replace(
-        new RegExp(`\\{\\{\\s*${escapedName}\\s*\\}\\}`, 'g'),
-        literal
-      );
-    }
-
-    return previewText;
-  }
-
-  private toSqlLiteral(
-    value: unknown,
-    dataType: SqlParameterDataType,
-    sqlProvider: SqlProvider
-  ): string {
-    if (value === null || value === undefined) {
-      return 'NULL';
-    }
-
-    if (dataType === 'number') {
-      return String(value);
-    }
-
-    if (dataType === 'boolean') {
-      if (sqlProvider === 'SqlServer') {
-        return value ? '1' : '0';
-      }
-      return value ? 'TRUE' : 'FALSE';
-    }
-
-    if (dataType === 'json') {
-      const jsonText =
-        typeof value === 'string' ? value : JSON.stringify(value);
-      return `'${this.escapeSqlString(jsonText)}'`;
-    }
-
-    return `'${this.escapeSqlString(String(value))}'`;
-  }
-
-  private escapeSqlString(value: string): string {
-    return value.replace(/'/g, "''");
+    return getSqlProviderAdapter(sqlProvider).renderPreviewSql(
+      queryText,
+      sqlParameters,
+      boundParams
+    );
   }
 
   private async executeQuery(
@@ -754,26 +689,19 @@ class SqlService {
     sqlParameters: Array<Pick<SqlParameterData, 'name' | 'index' | 'dataType'>>,
     boundParams: Record<string, unknown>
   ): Promise<QueryRows> {
-    if (sqlProvider === 'SqlServer') {
-      return this.executeSqlServerQuery(
-        execution,
-        connection,
-        queryText,
-        sqlParameters,
-        boundParams
-      );
-    }
-    if (sqlProvider === 'Postgres') {
-      return this.executePostgresQuery(
-        execution,
-        connection,
-        queryText,
-        sqlParameters,
-        boundParams
-      );
-    }
-
-    throw new Error(`Unsupported SQL provider: ${sqlProvider}`);
+    const context: SqlExecutionContext = {
+      cancelled: execution.cancelled,
+      throwIfCancelled: () => this.throwIfCancelled(execution),
+      registerCancelHandler: (handler) => this.registerCancelHandler(execution, handler),
+      createCancellationError: () => this.createCancellationError(execution),
+    };
+    return getSqlProviderAdapter(sqlProvider).executeQuery(
+      context,
+      connection,
+      queryText,
+      sqlParameters,
+      boundParams
+    );
   }
 
   private async executeNamedQuery(
@@ -931,174 +859,6 @@ class SqlService {
     };
   }
 
-  private async testSqlServerConnection(connection: ProfileData['sqlConnection']) {
-    const pool = new mssql.ConnectionPool({
-      user: String(connection.username ?? ''),
-      password: String(connection.password ?? ''),
-      server: String(connection.host ?? ''),
-      port: this.parsePort(connection.port, 1433),
-      database: String(connection.database ?? ''),
-      options: {
-        encrypt: Boolean(connection.encrypt ?? true),
-        trustServerCertificate: Boolean(connection.trustServerCertificate ?? true),
-      },
-      connectionTimeout: 5000,
-      requestTimeout: 5000,
-      pool: {
-        max: 1,
-        min: 0,
-        idleTimeoutMillis: 5000,
-      },
-    });
-
-    try {
-      await pool.connect();
-      await pool.request().query('SELECT 1 AS ping');
-    } finally {
-      await pool.close();
-    }
-  }
-
-  private async executeSqlServerQuery(
-    execution: ActiveExecution,
-    connection: ProfileData['sqlConnection'],
-    queryText: string,
-    sqlParameters: Array<Pick<SqlParameterData, 'name' | 'index' | 'dataType'>>,
-    boundParams: Record<string, unknown>
-  ): Promise<QueryRows> {
-    const normalizedQueryText = this.normalizeSqlServerQuery(queryText, sqlParameters);
-    const pool = new mssql.ConnectionPool({
-      user: String(connection.username ?? ''),
-      password: String(connection.password ?? ''),
-      server: String(connection.host ?? ''),
-      port: this.parsePort(connection.port, 1433),
-      database: String(connection.database ?? ''),
-      options: {
-        encrypt: Boolean(connection.encrypt ?? true),
-        trustServerCertificate: Boolean(connection.trustServerCertificate ?? true),
-      },
-      connectionTimeout: 5000,
-      requestTimeout: 60000,
-      pool: {
-        max: 1,
-        min: 0,
-        idleTimeoutMillis: 5000,
-      },
-    });
-
-    try {
-      await pool.connect();
-      this.throwIfCancelled(execution);
-      const request = pool.request();
-      this.registerCancelHandler(execution, () => {
-        request.cancel();
-      });
-      for (const parameter of [...sqlParameters].sort((a, b) => a.index - b.index)) {
-        request.input(parameter.name, boundParams[parameter.name] ?? null);
-      }
-      const result = await request.query(normalizedQueryText);
-      return (result.recordset ?? []) as QueryRows;
-    } catch (error) {
-      if (execution.cancelled || this.isSqlCancellationError(error)) {
-        throw this.createCancellationError(execution);
-      }
-      throw error;
-    } finally {
-      await pool.close();
-    }
-  }
-
-  private normalizeSqlServerQuery(
-    queryText: string,
-    sqlParameters: Array<Pick<SqlParameterData, 'name' | 'dataType'>>
-  ): string {
-    let normalized = queryText;
-    for (const parameter of sqlParameters) {
-      const escapedName = this.escapeRegex(parameter.name);
-      normalized = normalized.replace(new RegExp(`:${escapedName}\\b`, 'g'), `@${parameter.name}`);
-      normalized = normalized.replace(
-        new RegExp(`\\{\\{\\s*${escapedName}\\s*\\}\\}`, 'g'),
-        `@${parameter.name}`
-      );
-    }
-    return normalized;
-  }
-
-  private async testPostgresConnection(connection: ProfileData['sqlConnection']) {
-    const sslMode = String(connection.sslMode ?? 'prefer').toLowerCase();
-    const pgConfig: PgClientConfig = {
-      host: String(connection.host ?? ''),
-      port: this.parsePort(connection.port, 5432),
-      database: String(connection.database ?? 'postgres'),
-      user: String(connection.username ?? ''),
-      password: String(connection.password ?? ''),
-      connectionTimeoutMillis: 5000,
-      statement_timeout: 5000,
-      query_timeout: 5000,
-    };
-
-    if (['require', 'verify-ca', 'verify-full'].includes(sslMode)) {
-      pgConfig.ssl = {
-        rejectUnauthorized: sslMode !== 'require',
-      };
-    } else {
-      pgConfig.ssl = false;
-    }
-
-    const client = new PgClient(pgConfig);
-    try {
-      await client.connect();
-      await client.query('SELECT 1 AS ping');
-    } finally {
-      await client.end();
-    }
-  }
-
-  private async executePostgresQuery(
-    execution: ActiveExecution,
-    connection: ProfileData['sqlConnection'],
-    queryText: string,
-    sqlParameters: Array<Pick<SqlParameterData, 'name' | 'index' | 'dataType'>>,
-    boundParams: Record<string, unknown>
-  ): Promise<QueryRows> {
-    const pgConfig = this.buildPostgresConfig(connection, 60000);
-    const prepared = this.preparePostgresQuery(queryText, sqlParameters, boundParams);
-    const client = new PgClient(pgConfig);
-
-    try {
-      await client.connect();
-      this.throwIfCancelled(execution);
-      const result = await new Promise<PgQueryResult<Record<string, unknown>>>(
-        (resolve, reject) => {
-          const query = client.query(prepared.text, prepared.values, (error, queryResult) => {
-            if (error) {
-              reject(error);
-              return;
-            }
-
-            resolve(queryResult as PgQueryResult<Record<string, unknown>>);
-          });
-
-          this.registerCancelHandler(execution, () => {
-            (
-              client as PgClient & {
-                cancel: (currentClient: PgClient, currentQuery: unknown) => void;
-              }
-            ).cancel(client, query);
-          });
-        }
-      );
-      return (result.rows ?? []) as QueryRows;
-    } catch (error) {
-      if (execution.cancelled || this.isPostgresCancellationError(error)) {
-        throw this.createCancellationError(execution);
-      }
-      throw error;
-    } finally {
-      await client.end();
-    }
-  }
-
   private createExecution(testCaseId: string): ActiveExecution {
     const execution: ActiveExecution = {
       id: `${testCaseId}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
@@ -1161,132 +921,6 @@ class SqlService {
 
   private isCancellationError(error: unknown): boolean {
     return error instanceof Error && error.name === 'RunCancellationError';
-  }
-
-  private isSqlCancellationError(error: unknown): boolean {
-    return (
-      error instanceof Error &&
-      ('code' in error ? String((error as { code?: unknown }).code) === 'ECANCEL' : false)
-    );
-  }
-
-  private isPostgresCancellationError(error: unknown): boolean {
-    if (!(error instanceof Error)) {
-      return false;
-    }
-
-    const pgError = error as Error & { code?: string };
-    return pgError.code === '57014' || /cancel/i.test(pgError.message);
-  }
-
-  private buildPostgresConfig(
-    connection: ProfileData['sqlConnection'],
-    timeoutMs: number
-  ): PgClientConfig {
-    const sslMode = String(connection.sslMode ?? 'prefer').toLowerCase();
-    const pgConfig: PgClientConfig = {
-      host: String(connection.host ?? ''),
-      port: this.parsePort(connection.port, 5432),
-      database: String(connection.database ?? 'postgres'),
-      user: String(connection.username ?? ''),
-      password: String(connection.password ?? ''),
-      connectionTimeoutMillis: 5000,
-      statement_timeout: timeoutMs,
-      query_timeout: timeoutMs,
-    };
-
-    if (['require', 'verify-ca', 'verify-full'].includes(sslMode)) {
-      pgConfig.ssl = {
-        rejectUnauthorized: sslMode !== 'require',
-      };
-    } else {
-      pgConfig.ssl = false;
-    }
-
-    return pgConfig;
-  }
-
-  private preparePostgresQuery(
-    queryText: string,
-    sqlParameters: Array<Pick<SqlParameterData, 'name' | 'index' | 'dataType'>>,
-    boundParams: Record<string, unknown>
-  ): { text: string; values: unknown[] } {
-    let preparedText = queryText;
-    const values: unknown[] = [];
-    const placeholderIndexByName = new Map<string, number>();
-
-    const sortedParameters = [...sqlParameters].sort((a, b) => a.index - b.index);
-    for (const parameter of sortedParameters) {
-      const escapedName = this.escapeRegex(parameter.name);
-      const matchesNamedPlaceholder =
-        new RegExp(`@${escapedName}\\b`).test(preparedText) ||
-        new RegExp(`:${escapedName}\\b`).test(preparedText) ||
-        new RegExp(`\\{\\{\\s*${escapedName}\\s*\\}\\}`).test(preparedText);
-
-      if (!matchesNamedPlaceholder) {
-        continue;
-      }
-
-      if (!placeholderIndexByName.has(parameter.name)) {
-        placeholderIndexByName.set(parameter.name, values.length + 1);
-        values.push(boundParams[parameter.name] ?? null);
-      }
-
-      const placeholderIndex = placeholderIndexByName.get(parameter.name) as number;
-      const typedPlaceholder = this.buildPostgresTypedPlaceholder(
-        placeholderIndex,
-        parameter.dataType
-      );
-      preparedText = preparedText.replace(new RegExp(`@${escapedName}\\b`, 'g'), typedPlaceholder);
-      preparedText = preparedText.replace(new RegExp(`:${escapedName}\\b`, 'g'), typedPlaceholder);
-      preparedText = preparedText.replace(
-        new RegExp(`\\{\\{\\s*${escapedName}\\s*\\}\\}`, 'g'),
-        typedPlaceholder
-      );
-    }
-
-    if (values.length === 0 && /\$\d+/.test(preparedText)) {
-      const indexes = [...preparedText.matchAll(/\$(\d+)/g)].map((match) => Number(match[1]));
-      const maxIndex = indexes.length > 0 ? Math.max(...indexes) : 0;
-      for (let i = 0; i < maxIndex; i += 1) {
-        const parameter = sortedParameters[i];
-        values.push(parameter ? (boundParams[parameter.name] ?? null) : null);
-      }
-    }
-
-    preparedText = preparedText.replace(/\s+/g, ' ').trim();
-
-    return { text: preparedText, values };
-  }
-
-  private buildPostgresTypedPlaceholder(
-    placeholderIndex: number,
-    dataType: SqlParameterDataType
-  ): string {
-    const base = `$${placeholderIndex}`;
-    if (dataType === 'number') {
-      return `${base}::numeric`;
-    }
-    if (dataType === 'boolean') {
-      return `${base}::boolean`;
-    }
-    if (dataType === 'date') {
-      return `${base}::date`;
-    }
-    if (dataType === 'datetime') {
-      return `${base}::timestamptz`;
-    }
-    if (dataType === 'json') {
-      return `${base}::jsonb`;
-    }
-    if (dataType === 'uuid') {
-      return `${base}::uuid`;
-    }
-    return `${base}::text`;
-  }
-
-  private escapeRegex(value: string): string {
-    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 
   private compareQueryResults(

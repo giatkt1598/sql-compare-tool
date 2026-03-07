@@ -1,4 +1,4 @@
-export type SqlProvider = 'SqlServer' | 'Postgres';
+export type SqlProvider = string;
 
 export interface SqlConnection {
   host: string;
