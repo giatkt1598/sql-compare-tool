@@ -3,39 +3,28 @@ import ProfileController from '../controllers/ProfileController';
 
 const router = express.Router();
 
-// ===================== SPECIAL ROUTES (Must be before :id routes) =====================
+/**
+ * @swagger
+ * tags:
+ *   - name: Profiles
+ *     description: Profile management endpoints
+ */
 
 /**
  * @swagger
  * /api/profiles/statistics:
  *   get:
- *     summary: Lay thong ke profiles
- *     description: Get statistics about profiles
+ *     summary: Get profile statistics
+ *     description: Returns aggregated statistics for all stored profiles.
  *     tags:
- *       - Profiles - Special
+ *       - Profiles
  *     responses:
  *       200:
- *         description: Thong ke profiles
+ *         description: Profile statistics returned successfully
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 data:
- *                   type: object
- *                   properties:
- *                     totalProfiles:
- *                       type: integer
- *                     sqlServerCount:
- *                       type: integer
- *                     postgresCount:
- *                       type: integer
- *                     usedProviders:
- *                       type: array
- *                       items:
- *                         type: string
+ *               $ref: '#/components/schemas/ProfileStatistics'
  */
 router.get('/statistics', ProfileController.getStatistics.bind(ProfileController));
 
@@ -43,34 +32,27 @@ router.get('/statistics', ProfileController.getStatistics.bind(ProfileController
  * @swagger
  * /api/profiles/provider/{provider}:
  *   get:
- *     summary: Lay profiles theo SQL provider
- *     description: Get all profiles for a specific SQL provider
+ *     summary: Get profiles by SQL provider
+ *     description: Returns all profiles that use the specified SQL provider.
  *     tags:
- *       - Profiles - Special
+ *       - Profiles
  *     parameters:
  *       - in: path
  *         name: provider
  *         required: true
  *         schema:
  *           type: string
- *           enum:
- *             - SqlServer
- *             - Postgres
- *         description: SQL provider type
+ *           enum: [SqlServer, Postgres, MySQL]
+ *         description: SQL provider name
  *     responses:
  *       200:
- *         description: Danh sach profiles duoc lay thanh cong
+ *         description: Matching profiles returned successfully
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 data:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/Profile'
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Profile'
  *       400:
  *         description: Invalid provider
  */
@@ -80,86 +62,98 @@ router.get('/provider/:provider', ProfileController.getByProvider.bind(ProfileCo
  * @swagger
  * /api/profiles/search/{keyword}:
  *   get:
- *     summary: Tim kiem profiles
- *     description: Search profiles by description keyword
+ *     summary: Search profiles
+ *     description: Searches profiles by keyword.
  *     tags:
- *       - Profiles - Special
+ *       - Profiles
  *     parameters:
  *       - in: path
  *         name: keyword
  *         required: true
  *         schema:
  *           type: string
- *         description: Tu khoa tim kiem
+ *         description: Search keyword
  *     responses:
  *       200:
- *         description: Danh sach profiles tim thay
+ *         description: Matching profiles returned successfully
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 data:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/Profile'
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Profile'
+ *       400:
+ *         description: Search keyword is required
  */
 router.get('/search/:keyword', ProfileController.searchProfiles.bind(ProfileController));
 
 /**
  * @swagger
+ * /api/profiles/recent:
+ *   get:
+ *     summary: Get recent profiles
+ *     description: Returns the most recently created profiles using the default limit of 10.
+ *     tags:
+ *       - Profiles
+ *     responses:
+ *       200:
+ *         description: Recent profiles returned successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Profile'
+ *
  * /api/profiles/recent/{limit}:
  *   get:
- *     summary: Lay profiles gan day
- *     description: Get recently created profiles
+ *     summary: Get recent profiles with a custom limit
+ *     description: Returns the most recently created profiles up to the requested limit.
  *     tags:
- *       - Profiles - Special
+ *       - Profiles
  *     parameters:
  *       - in: path
  *         name: limit
- *         required: false
+ *         required: true
  *         schema:
  *           type: integer
- *           default: 10
- *         description: So luong profiles toi da (1-100)
+ *           minimum: 1
+ *           maximum: 100
+ *         description: Maximum number of profiles to return
  *     responses:
  *       200:
- *         description: Danh sach profiles gan day
+ *         description: Recent profiles returned successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Profile'
+ *       400:
+ *         description: Invalid limit
  */
 router.get('/recent', ProfileController.getRecentProfiles.bind(ProfileController));
 router.get('/recent/:limit', ProfileController.getRecentProfiles.bind(ProfileController));
-
-// ===================== STANDARD CRUD ROUTES =====================
 
 /**
  * @swagger
  * /api/profiles:
  *   get:
- *     summary: Lay danh sach tat ca profiles
- *     description: Retrieve all profiles stored in the system
+ *     summary: Get all profiles
+ *     description: Returns every profile stored in the system.
  *     tags:
- *       - Profiles - CRUD
+ *       - Profiles
  *     responses:
  *       200:
- *         description: Danh sach profiles duoc lay thanh cong
+ *         description: Profiles returned successfully
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 data:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/Profile'
- *                 message:
- *                   type: string
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Profile'
  *       500:
- *         description: Loi server
+ *         description: Unexpected server error
  */
 router.get('/', ProfileController.getAllProfiles.bind(ProfileController));
 
@@ -167,10 +161,10 @@ router.get('/', ProfileController.getAllProfiles.bind(ProfileController));
  * @swagger
  * /api/profiles:
  *   post:
- *     summary: Tao profile moi
- *     description: Create a new profile with SQL provider and connection details
+ *     summary: Create a profile
+ *     description: Creates a new profile with SQL provider and connection settings.
  *     tags:
- *       - Profiles - CRUD
+ *       - Profiles
  *     requestBody:
  *       required: true
  *       content:
@@ -179,24 +173,47 @@ router.get('/', ProfileController.getAllProfiles.bind(ProfileController));
  *             $ref: '#/components/schemas/CreateProfileRequest'
  *     responses:
  *       201:
- *         description: Profile duoc tao thanh cong
+ *         description: Profile created successfully
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 data:
- *                   $ref: '#/components/schemas/Profile'
- *                 message:
- *                   type: string
+ *               $ref: '#/components/schemas/Profile'
  *       400:
- *         description: Invalid request data
+ *         description: Invalid request payload
  *       409:
- *         description: Profile name already exists
+ *         description: Profile already exists
  */
 router.post('/', ProfileController.createProfile.bind(ProfileController));
+
+/**
+ * @swagger
+ * /api/profiles/restore:
+ *   post:
+ *     summary: Restore a profile backup
+ *     description: Uploads a backup ZIP file and restores the profile, dependent data, and stored results.
+ *     tags:
+ *       - Profiles
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/zip:
+ *           schema:
+ *             type: string
+ *             format: binary
+ *         application/octet-stream:
+ *           schema:
+ *             type: string
+ *             format: binary
+ *     responses:
+ *       200:
+ *         description: Backup restored successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ProfileRestoreResponse'
+ *       400:
+ *         description: Invalid backup file or restore failed
+ */
 router.post(
   '/restore',
   express.raw({
@@ -205,39 +222,59 @@ router.post(
   }),
   ProfileController.restoreProfile.bind(ProfileController)
 );
-router.get('/:id/backup', ProfileController.backupProfile.bind(ProfileController));
 
 /**
  * @swagger
- * /api/profiles/{id}:
+ * /api/profiles/{id}/backup:
  *   get:
- *     summary: Lay profile theo ID
- *     description: Retrieve a specific profile by its ID
+ *     summary: Download a profile backup
+ *     description: Downloads a ZIP archive containing the profile, related entities, and stored result files.
  *     tags:
- *       - Profiles - CRUD
+ *       - Profiles
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: string
- *         description: ID cua profile
+ *         description: Profile ID
  *     responses:
  *       200:
- *         description: Profile duoc lay thanh cong
+ *         description: Backup ZIP file returned successfully
+ *         content:
+ *           application/zip:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       404:
+ *         description: Profile not found
+ */
+router.get('/:id/backup', ProfileController.backupProfile.bind(ProfileController));
+
+/**
+ * @swagger
+ * /api/profiles/{id}:
+ *   get:
+ *     summary: Get a profile by ID
+ *     description: Returns a single profile by its ID.
+ *     tags:
+ *       - Profiles
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Profile ID
+ *     responses:
+ *       200:
+ *         description: Profile returned successfully
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 data:
- *                   $ref: '#/components/schemas/Profile'
- *                 message:
- *                   type: string
+ *               $ref: '#/components/schemas/Profile'
  *       404:
- *         description: Profile khong tim thay
+ *         description: Profile not found
  */
 router.get('/:id', ProfileController.getProfileById.bind(ProfileController));
 
@@ -245,17 +282,17 @@ router.get('/:id', ProfileController.getProfileById.bind(ProfileController));
  * @swagger
  * /api/profiles/{id}:
  *   put:
- *     summary: Cap nhat profile
- *     description: Update an existing profile
+ *     summary: Update a profile
+ *     description: Updates an existing profile.
  *     tags:
- *       - Profiles - CRUD
+ *       - Profiles
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: string
- *         description: ID cua profile
+ *         description: Profile ID
  *     requestBody:
  *       required: true
  *       content:
@@ -264,20 +301,15 @@ router.get('/:id', ProfileController.getProfileById.bind(ProfileController));
  *             $ref: '#/components/schemas/UpdateProfileRequest'
  *     responses:
  *       200:
- *         description: Profile duoc cap nhat thanh cong
+ *         description: Profile updated successfully
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 data:
- *                   $ref: '#/components/schemas/Profile'
- *                 message:
- *                   type: string
+ *               $ref: '#/components/schemas/Profile'
+ *       400:
+ *         description: Invalid request payload
  *       404:
- *         description: Profile khong tim thay
+ *         description: Profile not found
  */
 router.put('/:id', ProfileController.updateProfile.bind(ProfileController));
 
@@ -285,26 +317,28 @@ router.put('/:id', ProfileController.updateProfile.bind(ProfileController));
  * @swagger
  * /api/profiles/{id}:
  *   delete:
- *     summary: Xoa profile
- *     description: Delete a profile by its ID
+ *     summary: Delete a profile
+ *     description: Deletes a profile and its dependent data.
  *     tags:
- *       - Profiles - CRUD
+ *       - Profiles
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: string
- *         description: ID cua profile
+ *         description: Profile ID
  *     responses:
  *       200:
- *         description: Profile duoc xoa thanh cong
+ *         description: Profile deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/DeleteEntityResponse'
  *       404:
- *         description: Profile khong tim thay
+ *         description: Profile not found
  */
 router.delete('/:id', ProfileController.deleteProfile.bind(ProfileController));
-
-// ===================== SWAGGER SCHEMAS =====================
 
 /**
  * @swagger
@@ -316,60 +350,75 @@ router.delete('/:id', ProfileController.deleteProfile.bind(ProfileController));
  *         id:
  *           type: string
  *           description: Unique profile ID
- *           example: "profile-1772797781825-jnbxsfpd2"
+ *           example: profile-1772797781825-jnbxsfpd2
  *         name:
  *           type: string
  *           description: Profile name
- *           example: "Test Profile 1"
+ *           example: Demo Postgres Profile
  *         description:
  *           type: string
- *           description: Profile description
- *           example: "Test profile description"
+ *           description: Optional profile description
+ *           example: Compare old and new user access queries
  *         oldSqlFilePath:
  *           type: string
- *           description: Path to the old SQL file
- *           example: "C:\\sql\\old_query.sql"
+ *           description: Absolute path to the old SQL file
+ *           example: C:\sql\old_query.sql
  *         newSqlFilePath:
  *           type: string
- *           description: Path to the new SQL file
- *           example: "C:\\sql\\new_query.sql"
+ *           description: Absolute path to the new SQL file
+ *           example: C:\sql\new_query.sql
  *         sqlProvider:
  *           type: string
  *           description: SQL database provider
- *           enum:
- *             - SqlServer
- *             - Postgres
- *           example: "SqlServer"
+ *           enum: [SqlServer, Postgres, MySQL]
+ *           example: SqlServer
  *         sqlConnection:
- *           type: object
- *           properties:
- *             host:
- *               type: string
- *               example: "localhost"
- *             port:
- *               type: integer
- *               example: 1433
- *             database:
- *               type: string
- *               example: "TestDB"
- *             username:
- *               type: string
- *               example: "sa"
- *             password:
- *               type: string
- *               example: "password"
+ *           $ref: '#/components/schemas/ProfileSqlConnection'
  *         testCases:
  *           type: array
  *           description: List of test case IDs
- *           example: []
+ *           items:
+ *             type: string
  *         createdAt:
  *           type: string
  *           format: date-time
- *           example: "2026-03-06T11:49:41.825Z"
  *         updatedAt:
  *           type: string
  *           format: date-time
- *           example: "2026-03-06T11:49:41.825Z"
+ *
+ *     ProfileSqlConnection:
+ *       type: object
+ *       properties:
+ *         host:
+ *           type: string
+ *           example: localhost
+ *         port:
+ *           type: integer
+ *           example: 1433
+ *         database:
+ *           type: string
+ *           example: master
+ *         username:
+ *           type: string
+ *           example: sa
+ *         password:
+ *           type: string
+ *           example: password
+ *         authType:
+ *           type: string
+ *           enum: [WindowsAuth, SqlServerAuth]
+ *         encrypt:
+ *           type: boolean
+ *           example: true
+ *         trustServerCertificate:
+ *           type: boolean
+ *           example: true
+ *         multipleActiveResultSets:
+ *           type: boolean
+ *           example: true
+ *         sslMode:
+ *           type: string
+ *           enum: [disable, allow, prefer, require, verify-ca, verify-full]
  *
  *     CreateProfileRequest:
  *       type: object
@@ -382,43 +431,22 @@ router.delete('/:id', ProfileController.deleteProfile.bind(ProfileController));
  *       properties:
  *         name:
  *           type: string
- *           example: "My Profile"
+ *           example: My Profile
  *         description:
  *           type: string
- *           example: "Compare old and new queries"
+ *           example: Compare old and new queries
  *         oldSqlFilePath:
  *           type: string
- *           example: "C:\\sql\\old_query.sql"
+ *           example: C:\sql\old_query.sql
  *         newSqlFilePath:
  *           type: string
- *           example: "C:\\sql\\new_query.sql"
+ *           example: C:\sql\new_query.sql
  *         sqlProvider:
  *           type: string
- *           enum:
- *             - SqlServer
- *             - Postgres
- *           example: "SqlServer"
+ *           enum: [SqlServer, Postgres, MySQL]
+ *           example: SqlServer
  *         sqlConnection:
- *           type: object
- *           required:
- *             - host
- *             - username
- *           properties:
- *             host:
- *               type: string
- *               example: "localhost"
- *             port:
- *               type: integer
- *               example: 1433
- *             database:
- *               type: string
- *               example: "TestDB"
- *             username:
- *               type: string
- *               example: "sa"
- *             password:
- *               type: string
- *               example: "password"
+ *           $ref: '#/components/schemas/ProfileSqlConnection'
  *
  *     UpdateProfileRequest:
  *       type: object
@@ -433,22 +461,56 @@ router.delete('/:id', ProfileController.deleteProfile.bind(ProfileController));
  *           type: string
  *         sqlProvider:
  *           type: string
- *           enum:
- *             - SqlServer
- *             - Postgres
+ *           enum: [SqlServer, Postgres, MySQL]
  *         sqlConnection:
- *           type: object
- *           properties:
- *             host:
- *               type: string
- *             port:
- *               type: integer
- *             database:
- *               type: string
- *             username:
- *               type: string
- *             password:
- *               type: string
+ *           $ref: '#/components/schemas/ProfileSqlConnection'
+ *
+ *     DeleteEntityResponse:
+ *       type: object
+ *       properties:
+ *         message:
+ *           type: string
+ *           example: Deleted successfully
+ *         id:
+ *           type: string
+ *           example: profile-1772797781825-jnbxsfpd2
+ *
+ *     ProfileRestoreResponse:
+ *       type: object
+ *       properties:
+ *         message:
+ *           type: string
+ *           example: Profile restored successfully
+ *         profileId:
+ *           type: string
+ *           example: profile-1772797781825-jnbxsfpd2
+ *         restoredProfileName:
+ *           type: string
+ *           example: Demo Postgres Profile
+ *         replacedExisting:
+ *           type: boolean
+ *           example: true
+ *
+ *     ProfileStatistics:
+ *       type: object
+ *       properties:
+ *         totalProfiles:
+ *           type: integer
+ *           example: 4
+ *         sqlServerCount:
+ *           type: integer
+ *           example: 1
+ *         postgresCount:
+ *           type: integer
+ *           example: 2
+ *         mySqlCount:
+ *           type: integer
+ *           example: 1
+ *         usedProviders:
+ *           type: array
+ *           items:
+ *             type: string
+ *             example: Postgres
  */
 
 export default router;
