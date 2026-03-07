@@ -4,6 +4,7 @@ import {
   Alert,
   Box,
   Button,
+  Checkbox,
   CircularProgress,
   FormControlLabel,
   Paper,
@@ -249,9 +250,9 @@ function TestCaseUpsertPage() {
         <Button
           startIcon={<ArrowBackOutlinedIcon />}
           variant="outlined"
-          onClick={() => navigate(`/profiles/${profileId}/test-cases`)}
+          onClick={() => navigate(-1)}
         >
-          Back to Test Cases
+          Back
         </Button>
       </Stack>
 
@@ -310,36 +311,37 @@ function TestCaseUpsertPage() {
               }
               helperText="JSON string for sql parameters"
             />
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={formValue.compareInOrder}
+                    onChange={(event) =>
+                      setFormValue((current) => ({
+                        ...current,
+                        compareInOrder: event.target.checked,
+                      }))
+                    }
+                  />
+                }
+                label="Compare in order"
+              />
 
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={formValue.enabled}
-                  onChange={(event) =>
-                    setFormValue((current) => ({
-                      ...current,
-                      enabled: event.target.checked,
-                    }))
-                  }
-                />
-              }
-              label="Enabled"
-            />
-
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={formValue.compareInOrder}
-                  onChange={(event) =>
-                    setFormValue((current) => ({
-                      ...current,
-                      compareInOrder: event.target.checked,
-                    }))
-                  }
-                />
-              }
-              label="Compare in order"
-            />
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={formValue.enabled}
+                    onChange={(event) =>
+                      setFormValue((current) => ({
+                        ...current,
+                        enabled: event.target.checked,
+                      }))
+                    }
+                  />
+                }
+                label="Enabled"
+              />
+            </Box>
 
             <Stack direction="row" spacing={1.5} justifyContent="space-between">
               <Stack direction="row" spacing={1.5}>
