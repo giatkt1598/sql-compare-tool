@@ -31,6 +31,7 @@ import {
   TableRow,
   FormControlLabel,
   Tooltip,
+  TextField,
   Typography,
 } from '@mui/material';
 import { type ChangeEvent, useEffect, useState } from 'react';
@@ -51,6 +52,7 @@ interface RunManyDialogState {
   open: boolean;
   scope: 'all' | 'enabled';
   runInParallel: 'yes' | 'no';
+  maxConcurrency: string;
 }
 
 interface TestCaseStreamEvent {
@@ -80,6 +82,7 @@ function TestCasesPage() {
     open: false,
     scope: 'enabled',
     runInParallel: 'no',
+    maxConcurrency: '8',
   });
 
   useEffect(() => {
@@ -239,6 +242,7 @@ function TestCasesPage() {
         profileId,
         scope: runManyDialog.scope,
         runInParallel: runManyDialog.runInParallel === 'yes',
+        maxConcurrency: Math.max(1, Number.parseInt(runManyDialog.maxConcurrency || '8', 10) || 8),
       });
       setRunManyDialog((current) => ({ ...current, open: false }));
       showToast('Run many started', 'success');
@@ -557,6 +561,22 @@ function TestCasesPage() {
                 </Stack>
               </RadioGroup>
             </Stack>
+
+            <TextField
+              size="small"
+              label="Max concurrency"
+              type="number"
+              value={runManyDialog.maxConcurrency}
+              onChange={(event) =>
+                setRunManyDialog((current) => ({
+                  ...current,
+                  maxConcurrency: event.target.value,
+                }))
+              }
+              inputProps={{ min: 1, step: 1 }}
+              disabled={runManyDialog.runInParallel !== 'yes'}
+              helperText="Maximum number of test cases to run at the same time"
+            />
           </Stack>
         </DialogContent>
         <DialogActions>

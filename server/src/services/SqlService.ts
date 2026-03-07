@@ -79,6 +79,7 @@ interface RunManyTestCasesOptions {
   profileId: string;
   scope: 'all' | 'enabled';
   runInParallel: boolean;
+  maxConcurrency: number;
 }
 
 interface ActiveExecution {
@@ -435,23 +436,20 @@ class SqlService {
       this.activeExecutions.has(testCase.id)
     );
 
+    void (async () => {
     if (options.runInParallel) {
-      void Promise.allSettled(
-        startedTestCases.map((testCase) =>
-          this.runTestCase(testCase.id, undefined, { source: 'manual' })
-        )
+        await this.runManyWithConcurrencyLimit(
+          startedTestCases.map((testCase) => testCase.id),
+          options.maxConcurrency
+        );
+        return;
+      }
+
+      await this.runManyWithConcurrencyLimit(
+        startedTestCases.map((testCase) => testCase.id),
+        1
       );
-    } else {
-      void (async () => {
-        for (const testCase of startedTestCases) {
-          try {
-            await this.runTestCase(testCase.id, undefined, { source: 'manual' });
-          } catch {
-            // Keep batch moving even if one test case fails.
-          }
-        }
-      })();
-    }
+    })();
 
     return {
       profileId: options.profileId,
@@ -460,8 +458,36 @@ class SqlService {
       skippedCount: skippedTestCases.length,
       startedTestCaseIds: startedTestCases.map((testCase) => testCase.id),
       skippedTestCaseIds: skippedTestCases.map((testCase) => testCase.id),
-      message: `Run many started for ${startedTestCases.length} test case(s)`,
+      message: `Run many started for ${startedTestCases.length} test case(s) with concurrency limit ${options.runInParallel ? options.maxConcurrency : 1}`,
     };
+  }
+
+  private async runManyWithConcurrencyLimit(
+    testCaseIds: string[],
+    concurrencyLimit: number
+  ): Promise<void> {
+    if (testCaseIds.length === 0) {
+      return;
+    }
+
+    let nextIndex = 0;
+    const workerCount = Math.min(concurrencyLimit, testCaseIds.length);
+
+    const workers = Array.from({ length: workerCount }, async () => {
+      while (nextIndex < testCaseIds.length) {
+        const currentIndex = nextIndex;
+        nextIndex += 1;
+        const testCaseId = testCaseIds[currentIndex];
+
+        try {
+          await this.runTestCase(testCaseId, undefined, { source: 'manual' });
+        } catch {
+          // Keep batch moving even if one test case fails.
+        }
+      }
+    });
+
+    await Promise.all(workers);
   }
 
   getLatestTestCaseResult(testCaseId: string): LatestTestCaseResult {

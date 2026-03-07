@@ -78,6 +78,7 @@ export const sqlApi = {
     profileId: string;
     scope: 'all' | 'enabled';
     runInParallel: boolean;
+    maxConcurrency: number;
   }) =>
     request<{
       success: boolean;

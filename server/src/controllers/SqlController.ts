@@ -72,6 +72,10 @@ class SqlController {
       const profileId = String(req.body?.profileId ?? '').trim();
       const scope = req.body?.scope === 'all' ? 'all' : 'enabled';
       const runInParallel = Boolean(req.body?.runInParallel);
+      const parsedMaxConcurrency = Number.parseInt(String(req.body?.maxConcurrency ?? 8), 10);
+      const maxConcurrency = Number.isFinite(parsedMaxConcurrency)
+        ? Math.max(1, parsedMaxConcurrency)
+        : 8;
 
       if (!profileId) {
         res.status(400).json({
@@ -85,6 +89,7 @@ class SqlController {
         profileId,
         scope,
         runInParallel,
+        maxConcurrency,
       });
 
       res.status(202).json({
