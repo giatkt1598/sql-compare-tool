@@ -10,11 +10,7 @@ import type { ProfileData, SqlProvider } from '../types/profile';
 import type { SqlParameterData, SqlParameterDataType } from '../types/sqlParameter';
 import type { TestCaseData, TestCaseStatus } from '../types/testCase';
 import { getSqlProviderAdapter } from './sql-providers';
-import type {
-  QueryRow,
-  QueryRows,
-  SqlExecutionContext,
-} from './sql-providers/types';
+import type { QueryRow, QueryRows, SqlExecutionContext } from './sql-providers/types';
 
 interface ResultDiffItem {
   index: number;
@@ -157,14 +153,6 @@ class SqlService {
   }
 
   async testConnection(sqlProvider: SqlProvider, connection: ProfileData['sqlConnection']) {
-    if (!connection.host) {
-      throw new Error('Database host is required');
-    }
-
-    if (!connection.username) {
-      throw new Error('Database username is required');
-    }
-
     await getSqlProviderAdapter(sqlProvider).testConnection(connection);
 
     return {
@@ -281,20 +269,15 @@ class SqlService {
           compareDuration: Date.now() - compareStartedAt,
         }
       );
-      const files = this.writeRunArtifacts(
-        profile.id,
-        testCase.id,
-        nextExecutionCount,
-        {
-          oldSql,
-          newSql,
-          parameterPayload: rawParams,
-          testCasePayload: effectiveTestCaseSnapshot,
-          oldRows,
-          newRows,
-          diffPayload,
-        }
-      );
+      const files = this.writeRunArtifacts(profile.id, testCase.id, nextExecutionCount, {
+        oldSql,
+        newSql,
+        parameterPayload: rawParams,
+        testCasePayload: effectiveTestCaseSnapshot,
+        oldRows,
+        newRows,
+        diffPayload,
+      });
 
       const executionDuration = Date.now() - startedAt;
       const status: TestCaseStatus = diffPayload.summary.matched ? 'success' : 'failed';
@@ -354,21 +337,16 @@ class SqlService {
         parallelExecution: draft?.parallelExecution ?? testCase.parallelExecution,
         compareDuration: null,
       });
-      const files = this.writeRunArtifacts(
-        profile.id,
-        testCase.id,
-        nextExecutionCount,
-        {
-          oldSql,
-          newSql,
-          parameterPayload: rawParams,
-          testCasePayload: effectiveTestCaseSnapshot ?? {
-            ...testCase.toJSON(),
-            name: effectiveTestCase.name,
-          },
-          diffPayload,
-        }
-      );
+      const files = this.writeRunArtifacts(profile.id, testCase.id, nextExecutionCount, {
+        oldSql,
+        newSql,
+        parameterPayload: rawParams,
+        testCasePayload: effectiveTestCaseSnapshot ?? {
+          ...testCase.toJSON(),
+          name: effectiveTestCase.name,
+        },
+        diffPayload,
+      });
 
       try {
         TestCaseRepository.update(testCase.id, {
@@ -408,10 +386,7 @@ class SqlService {
     }
   }
 
-  buildSqlQueryPreview(
-    testCaseId: string,
-    draft?: RunTestCaseDraft
-  ): BuildSqlQueryPreviewResult {
+  buildSqlQueryPreview(testCaseId: string, draft?: RunTestCaseDraft): BuildSqlQueryPreviewResult {
     const testCase = TestCaseRepository.getById(testCaseId);
     if (!testCase) {
       throw new Error(`TestCase with ID ${testCaseId} not found`);
@@ -468,7 +443,7 @@ class SqlService {
     );
 
     void (async () => {
-    if (options.runInParallel) {
+      if (options.runInParallel) {
         await this.runManyWithConcurrencyLimit(
           startedTestCases.map((testCase) => testCase.id),
           options.maxConcurrency

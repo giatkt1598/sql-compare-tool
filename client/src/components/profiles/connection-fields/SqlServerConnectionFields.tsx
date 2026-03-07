@@ -18,6 +18,7 @@ const sqlServerAuthTypes: SqlServerAuthType[] = ['WindowsAuth', 'SqlServerAuth']
 
 function SqlServerConnectionFields({ connection, onChange }: ConnectionFieldsProps) {
   const [showPassword, setShowPassword] = useState(false);
+  const isWindowsAuth = connection.authType === 'WindowsAuth';
 
   return (
     <Stack spacing={1.5}>
@@ -61,6 +62,15 @@ function SqlServerConnectionFields({ connection, onChange }: ConnectionFieldsPro
           onChange={(event) => onChange({ port: event.target.value })}
         />
       </Box>
+
+      <TextField
+        size="small"
+        label="Database"
+        required
+        value={connection.database}
+        onChange={(event) => onChange({ database: event.target.value })}
+      />
+
       <Box
         sx={{
           display: 'grid',
@@ -68,40 +78,44 @@ function SqlServerConnectionFields({ connection, onChange }: ConnectionFieldsPro
           gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
         }}
       >
-        <TextField
-          size="small"
-          label="Username"
-          required
-          value={connection.username}
-          onChange={(event) => onChange({ username: event.target.value })}
-        />
-        <TextField
-          size="small"
-          label="Password"
-          required
-          type={showPassword ? 'text' : 'password'}
-          value={connection.password}
-          onChange={(event) => onChange({ password: event.target.value })}
-          slotProps={{
-            input: {
-              endAdornment: (
-                <InputAdornment position="end">
-                  <IconButton
-                    edge="end"
-                    onClick={() => setShowPassword((current) => !current)}
-                    onMouseDown={(event) => event.preventDefault()}
-                  >
-                    {showPassword ? (
-                      <VisibilityOffOutlinedIcon fontSize="small" />
-                    ) : (
-                      <VisibilityOutlinedIcon fontSize="small" />
-                    )}
-                  </IconButton>
-                </InputAdornment>
-              ),
-            },
-          }}
-        />
+        {!isWindowsAuth ? (
+          <>
+            <TextField
+              size="small"
+              label="Username"
+              required
+              value={connection.username}
+              onChange={(event) => onChange({ username: event.target.value })}
+            />
+            <TextField
+              size="small"
+              label="Password"
+              required
+              type={showPassword ? 'text' : 'password'}
+              value={connection.password}
+              onChange={(event) => onChange({ password: event.target.value })}
+              slotProps={{
+                input: {
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        edge="end"
+                        onClick={() => setShowPassword((current) => !current)}
+                        onMouseDown={(event) => event.preventDefault()}
+                      >
+                        {showPassword ? (
+                          <VisibilityOffOutlinedIcon fontSize="small" />
+                        ) : (
+                          <VisibilityOutlinedIcon fontSize="small" />
+                        )}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                },
+              }}
+            />
+          </>
+        ) : null}
 
         <FormControlLabel
           control={

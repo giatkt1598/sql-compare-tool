@@ -1,4 +1,5 @@
 export type SqlProvider = string;
+export type SqlServerAuthType = 'WindowsAuth' | 'SqlServerAuth';
 
 export interface SqlConnection {
   host: string;
@@ -6,6 +7,9 @@ export interface SqlConnection {
   database: string;
   username: string;
   password: string;
+  authType?: SqlServerAuthType;
+  encrypt?: boolean;
+  trustServerCertificate?: boolean;
   [key: string]: unknown;
 }
 

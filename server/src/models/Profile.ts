@@ -43,6 +43,8 @@ class Profile implements ProfileData {
 
   validate(): ValidationResult {
     const errors: string[] = [];
+    const isSqlServerWindowsAuth =
+      this.sqlProvider === 'SqlServer' && this.sqlConnection.authType === 'WindowsAuth';
 
     if (!this.name || this.name.trim() === '') {
       errors.push('Profile name is required');
@@ -64,7 +66,10 @@ class Profile implements ProfileData {
       errors.push('Database host is required');
     }
 
-    if (!this.sqlConnection.username || this.sqlConnection.username.trim() === '') {
+    if (
+      !isSqlServerWindowsAuth &&
+      (!this.sqlConnection.username || this.sqlConnection.username.trim() === '')
+    ) {
       errors.push('Database username is required');
     }
 

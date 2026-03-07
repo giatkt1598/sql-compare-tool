@@ -4,20 +4,34 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000
 const API_SQL_URL = `${API_BASE_URL}/api/sql`;
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(init?.headers ?? {}),
-    },
-    ...init,
-  });
+  const timeoutMs = 15000;
+  const abortController = new AbortController();
+  const timeoutHandle = setTimeout(() => abortController.abort(), timeoutMs);
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(errorText || 'API request failed');
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...(init?.headers ?? {}),
+      },
+      signal: abortController.signal,
+      ...init,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || 'API request failed');
+    }
+
+    return (await response.json()) as T;
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new Error('Request timed out');
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutHandle);
   }
-
-  return (await response.json()) as T;
 }
 
 export const sqlApi = {
