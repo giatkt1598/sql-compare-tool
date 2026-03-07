@@ -275,6 +275,7 @@ class SqlService {
         status,
         error: null,
         executionDuration,
+        executionCount: nextExecutionCount,
         executionTime: executedAt,
       });
       TestCaseEventService.publish(testCase.id, {

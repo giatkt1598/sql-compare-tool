@@ -1,6 +1,7 @@
 import fs, { type FSWatcher } from 'node:fs';
 import ProfileRepository from '../repositories/ProfileRepository';
 import TestCaseRepository from '../repositories/TestCaseRepository';
+import TestCaseEventService from './TestCaseEventService';
 import SqlService from './SqlService';
 
 interface ManagedWatcher {
@@ -18,10 +19,26 @@ interface ManagedWatcher {
 class TestCaseAutoRunService {
   private readonly watchers = new Map<string, ManagedWatcher>();
 
+  constructor() {
+    TestCaseEventService.onSubscriberCountChanged((testCaseId, subscriberCount) => {
+      if (subscriberCount > 0) {
+        this.syncTestCase(testCaseId);
+        return;
+      }
+
+      this.removeTestCase(testCaseId);
+    });
+  }
+
   syncAll(): void {
     const eligibleIds = new Set(
       TestCaseRepository.getAll()
-        .filter((testCase) => testCase.autoRunWhenSqlChanges && testCase.enabled)
+        .filter(
+          (testCase) =>
+            testCase.autoRunWhenSqlChanges &&
+            testCase.enabled &&
+            TestCaseEventService.hasSubscribers(testCase.id)
+        )
         .map((testCase) => testCase.id)
     );
 
@@ -41,7 +58,11 @@ class TestCaseAutoRunService {
     const eligibleIds = new Set<string>();
 
     for (const testCase of testCases) {
-      if (testCase.autoRunWhenSqlChanges && testCase.enabled) {
+      if (
+        testCase.autoRunWhenSqlChanges &&
+        testCase.enabled &&
+        TestCaseEventService.hasSubscribers(testCase.id)
+      ) {
         eligibleIds.add(testCase.id);
         this.syncTestCase(testCase.id);
       }
@@ -56,7 +77,12 @@ class TestCaseAutoRunService {
 
   syncTestCase(testCaseId: string): void {
     const testCase = TestCaseRepository.getById(testCaseId);
-    if (!testCase || !testCase.autoRunWhenSqlChanges || !testCase.enabled) {
+    if (
+      !testCase ||
+      !testCase.autoRunWhenSqlChanges ||
+      !testCase.enabled ||
+      !TestCaseEventService.hasSubscribers(testCaseId)
+    ) {
       this.removeTestCase(testCaseId);
       return;
     }
