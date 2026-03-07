@@ -239,10 +239,7 @@ function TestCasesPage() {
       setRunManyDialog((current) => ({ ...current, open: false }));
       showToast('Run many started', 'success');
     } catch (runManyError) {
-      showToast(
-        runManyError instanceof Error ? runManyError.message : 'Run many failed',
-        'error'
-      );
+      showToast(runManyError instanceof Error ? runManyError.message : 'Run many failed', 'error');
     } finally {
       setIsRunManySubmitting(false);
     }
@@ -411,7 +408,10 @@ function TestCasesPage() {
             <Typography variant="body2" color="text.secondary">
               Total test cases: {items.length}
             </Typography>
-            <Button variant="contained" onClick={() => setRunManyDialog((current) => ({ ...current, open: true }))}>
+            <Button
+              variant="contained"
+              onClick={() => setRunManyDialog((current) => ({ ...current, open: true }))}
+            >
               Run Many
             </Button>
           </Stack>
@@ -442,12 +442,10 @@ function TestCasesPage() {
                   }))
                 }
               >
-                <FormControlLabel value="all" control={<Radio />} label="All" />
-                <FormControlLabel
-                  value="enabled"
-                  control={<Radio />}
-                  label="Only enabled test case"
-                />
+                <Stack direction="row" spacing={8}>
+                  <FormControlLabel value="all" control={<Radio />} label="All" />
+                  <FormControlLabel value="enabled" control={<Radio />} label="Only enabled" />
+                </Stack>
               </RadioGroup>
             </Stack>
 
@@ -462,8 +460,10 @@ function TestCasesPage() {
                   }))
                 }
               >
-                <FormControlLabel value="yes" control={<Radio />} label="Yes" />
-                <FormControlLabel value="no" control={<Radio />} label="No" />
+                <Stack direction="row" spacing={8}>
+                  <FormControlLabel value="yes" control={<Radio />} label="Yes" />
+                  <FormControlLabel value="no" control={<Radio />} label="No" />
+                </Stack>
               </RadioGroup>
             </Stack>
           </Stack>
@@ -475,7 +475,11 @@ function TestCasesPage() {
           >
             Cancel
           </Button>
-          <Button variant="contained" onClick={() => void handleRunMany()} disabled={isRunManySubmitting}>
+          <Button
+            variant="contained"
+            onClick={() => void handleRunMany()}
+            disabled={isRunManySubmitting}
+          >
             Run Many
           </Button>
         </DialogActions>
