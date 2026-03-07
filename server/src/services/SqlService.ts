@@ -2,7 +2,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { Response } from 'express';
 import mssql from 'mssql';
-import { Client as PgClient, type ClientConfig as PgClientConfig } from 'pg';
+import {
+  Client as PgClient,
+  type ClientConfig as PgClientConfig,
+  type QueryResult as PgQueryResult,
+} from 'pg';
 import { FILE_PATHS } from '../config/fileConstants';
 import ProfileRepository from '../repositories/ProfileRepository';
 import SqlParameterRepository from '../repositories/SqlParameterRepository';
@@ -66,6 +70,14 @@ interface RunTestCaseOptions {
   source?: 'manual' | 'auto';
 }
 
+interface ActiveExecution {
+  id: string;
+  testCaseId: string;
+  cancelled: boolean;
+  cancelReason: string | null;
+  cancelHandlers: Set<() => void>;
+}
+
 interface LatestTestCaseResult {
   testCaseId: string;
   profileId: string;
@@ -90,8 +102,37 @@ interface LatestTestCaseResult {
 }
 
 class SqlService {
+  private readonly activeExecutions = new Map<string, ActiveExecution>();
+
   subscribeToTestCaseEvents(testCaseId: string, response: Response): () => void {
     return TestCaseEventService.subscribe(testCaseId, response);
+  }
+
+  cancelRun(testCaseId: string, reason: string): boolean {
+    const execution = this.activeExecutions.get(testCaseId);
+    if (!execution || execution.cancelled) {
+      return false;
+    }
+
+    execution.cancelled = true;
+    execution.cancelReason = reason;
+    for (const cancelHandler of execution.cancelHandlers) {
+      try {
+        cancelHandler();
+      } catch {
+        // Ignore cancellation handler errors.
+      }
+    }
+
+    TestCaseEventService.publish(testCaseId, {
+      type: 'running',
+      testCaseId,
+      status: 'running',
+      message: reason,
+      source: 'auto',
+    });
+
+    return true;
   }
 
   async testConnection(sqlProvider: SqlProvider, connection: ProfileData['sqlConnection']) {
@@ -128,53 +169,59 @@ class SqlService {
     draft?: RunTestCaseDraft,
     options?: RunTestCaseOptions
   ): Promise<RunTestCaseResult> {
+    if (this.activeExecutions.has(testCaseId)) {
+      throw new Error(`TestCase ${testCaseId} is already running`);
+    }
+
     const startedAt = Date.now();
     const executedAt = new Date().toISOString();
     const source = options?.source ?? 'manual';
-
-    const testCase = TestCaseRepository.getById(testCaseId);
-    if (!testCase) {
-      throw new Error(`TestCase with ID ${testCaseId} not found`);
-    }
-
-    const profile = ProfileRepository.getById(testCase.profileId);
-    if (!profile) {
-      throw new Error(`Profile with ID ${testCase.profileId} not found`);
-    }
-
-    const nextExecutionCount = testCase.executionCount + 1;
-    const effectiveTestCase = {
-      ...testCase,
-      name: draft?.name ?? testCase.name,
-      parameter: draft?.parameter ?? testCase.parameter,
-      enabled: draft?.enabled ?? testCase.enabled,
-      compareInOrder: draft?.compareInOrder ?? testCase.compareInOrder,
-    };
+    const execution = this.createExecution(testCaseId);
+    let nextExecutionCount = 0;
     let oldSql = '';
     let newSql = '';
     let rawParams: Record<string, unknown> = {};
 
-    TestCaseRepository.update(testCase.id, {
-      executionCount: nextExecutionCount,
-      status: 'running',
-      error: null,
-      executionDuration: null,
-      executionTime: executedAt,
-    });
-    TestCaseEventService.publish(testCase.id, {
-      type: 'running',
-      testCaseId: testCase.id,
-      status: 'running',
-      executionCount: nextExecutionCount,
-      executionTime: executedAt,
-      message: 'Test case is running',
-      source,
-    });
-
     try {
+      const testCase = TestCaseRepository.getById(testCaseId);
+      if (!testCase) {
+        throw new Error(`TestCase with ID ${testCaseId} not found`);
+      }
+
+      const profile = ProfileRepository.getById(testCase.profileId);
+      if (!profile) {
+        throw new Error(`Profile with ID ${testCase.profileId} not found`);
+      }
+
+      nextExecutionCount = testCase.executionCount + 1;
+      const effectiveTestCase = {
+        ...testCase,
+        name: draft?.name ?? testCase.name,
+        parameter: draft?.parameter ?? testCase.parameter,
+        enabled: draft?.enabled ?? testCase.enabled,
+        compareInOrder: draft?.compareInOrder ?? testCase.compareInOrder,
+      };
+
+      TestCaseRepository.update(testCase.id, {
+        status: 'running',
+        error: null,
+        executionDuration: null,
+        executionTime: executedAt,
+      });
+      TestCaseEventService.publish(testCase.id, {
+        type: 'running',
+        testCaseId: testCase.id,
+        status: 'running',
+        executionTime: executedAt,
+        message: 'Test case is running',
+        source,
+      });
+
+      this.throwIfCancelled(execution);
       oldSql = this.readSqlFile(profile.oldSqlFilePath, 'oldSqlFilePath');
       newSql = this.readSqlFile(profile.newSqlFilePath, 'newSqlFilePath');
 
+      this.throwIfCancelled(execution);
       rawParams = this.parseTestCaseParameterObject(effectiveTestCase.parameter);
       const sqlParameters = SqlParameterRepository.getByProfileId(profile.id).sort(
         (a, b) => a.index - b.index
@@ -182,6 +229,7 @@ class SqlService {
       const boundParams = this.mapBoundParameters(sqlParameters, rawParams);
 
       const oldRows = await this.executeNamedQuery(
+        execution,
         path.basename(profile.oldSqlFilePath),
         profile.sqlProvider,
         profile.sqlConnection,
@@ -190,6 +238,7 @@ class SqlService {
         boundParams
       );
       const newRows = await this.executeNamedQuery(
+        execution,
         path.basename(profile.newSqlFilePath),
         profile.sqlProvider,
         profile.sqlConnection,
@@ -198,6 +247,7 @@ class SqlService {
         boundParams
       );
 
+      this.throwIfCancelled(execution);
       const diffPayload = this.compareQueryResults(
         oldRows,
         newRows,
@@ -251,6 +301,24 @@ class SqlService {
         diffSummary: diffPayload.summary,
       };
     } catch (error) {
+      if (this.isCancellationError(error)) {
+        throw error;
+      }
+
+      const testCase = TestCaseRepository.getById(testCaseId);
+      if (!testCase) {
+        throw error;
+      }
+
+      const profile = ProfileRepository.getById(testCase.profileId);
+      if (!profile) {
+        throw error;
+      }
+
+      const effectiveTestCase = {
+        ...testCase,
+        name: draft?.name ?? testCase.name,
+      };
       const executionDuration = Date.now() - startedAt;
       const errorMessage = error instanceof Error ? error.message : 'Unexpected error';
       const diffPayload = this.buildErrorDiffPayload(executedAt, errorMessage);
@@ -299,6 +367,8 @@ class SqlService {
         files,
         diffSummary: diffPayload.summary,
       };
+    } finally {
+      this.clearExecution(execution);
     }
   }
 
@@ -445,6 +515,7 @@ class SqlService {
   }
 
   private async executeQuery(
+    execution: ActiveExecution,
     sqlProvider: SqlProvider,
     connection: ProfileData['sqlConnection'],
     queryText: string,
@@ -452,16 +523,29 @@ class SqlService {
     boundParams: Record<string, unknown>
   ): Promise<QueryRows> {
     if (sqlProvider === 'SqlServer') {
-      return this.executeSqlServerQuery(connection, queryText, sqlParameters, boundParams);
+      return this.executeSqlServerQuery(
+        execution,
+        connection,
+        queryText,
+        sqlParameters,
+        boundParams
+      );
     }
     if (sqlProvider === 'Postgres') {
-      return this.executePostgresQuery(connection, queryText, sqlParameters, boundParams);
+      return this.executePostgresQuery(
+        execution,
+        connection,
+        queryText,
+        sqlParameters,
+        boundParams
+      );
     }
 
     throw new Error(`Unsupported SQL provider: ${sqlProvider}`);
   }
 
   private async executeNamedQuery(
+    execution: ActiveExecution,
     queryLabel: string,
     sqlProvider: SqlProvider,
     connection: ProfileData['sqlConnection'],
@@ -471,6 +555,7 @@ class SqlService {
   ): Promise<QueryRows> {
     try {
       return await this.executeQuery(
+        execution,
         sqlProvider,
         connection,
         queryText,
@@ -512,6 +597,7 @@ class SqlService {
   }
 
   private async executeSqlServerQuery(
+    execution: ActiveExecution,
     connection: ProfileData['sqlConnection'],
     queryText: string,
     sqlParameters: Array<Pick<SqlParameterData, 'name' | 'index' | 'dataType'>>,
@@ -539,12 +625,21 @@ class SqlService {
 
     try {
       await pool.connect();
+      this.throwIfCancelled(execution);
       const request = pool.request();
+      this.registerCancelHandler(execution, () => {
+        request.cancel();
+      });
       for (const parameter of [...sqlParameters].sort((a, b) => a.index - b.index)) {
         request.input(parameter.name, boundParams[parameter.name] ?? null);
       }
       const result = await request.query(normalizedQueryText);
       return (result.recordset ?? []) as QueryRows;
+    } catch (error) {
+      if (execution.cancelled || this.isSqlCancellationError(error)) {
+        throw this.createCancellationError(execution);
+      }
+      throw error;
     } finally {
       await pool.close();
     }
@@ -597,6 +692,7 @@ class SqlService {
   }
 
   private async executePostgresQuery(
+    execution: ActiveExecution,
     connection: ProfileData['sqlConnection'],
     queryText: string,
     sqlParameters: Array<Pick<SqlParameterData, 'name' | 'index' | 'dataType'>>,
@@ -608,11 +704,100 @@ class SqlService {
 
     try {
       await client.connect();
-      const result = await client.query(prepared.text, prepared.values);
+      this.throwIfCancelled(execution);
+      const result = await new Promise<PgQueryResult<Record<string, unknown>>>(
+        (resolve, reject) => {
+          const query = client.query(prepared.text, prepared.values, (error, queryResult) => {
+            if (error) {
+              reject(error);
+              return;
+            }
+
+            resolve(queryResult as PgQueryResult<Record<string, unknown>>);
+          });
+
+          this.registerCancelHandler(execution, () => {
+            (
+              client as PgClient & {
+                cancel: (currentClient: PgClient, currentQuery: unknown) => void;
+              }
+            ).cancel(client, query);
+          });
+        }
+      );
       return (result.rows ?? []) as QueryRows;
+    } catch (error) {
+      if (execution.cancelled || this.isPostgresCancellationError(error)) {
+        throw this.createCancellationError(execution);
+      }
+      throw error;
     } finally {
       await client.end();
     }
+  }
+
+  private createExecution(testCaseId: string): ActiveExecution {
+    const execution: ActiveExecution = {
+      id: `${testCaseId}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+      testCaseId,
+      cancelled: false,
+      cancelReason: null,
+      cancelHandlers: new Set(),
+    };
+    this.activeExecutions.set(testCaseId, execution);
+    return execution;
+  }
+
+  private clearExecution(execution: ActiveExecution): void {
+    const activeExecution = this.activeExecutions.get(execution.testCaseId);
+    if (activeExecution?.id === execution.id) {
+      this.activeExecutions.delete(execution.testCaseId);
+    }
+  }
+
+  private registerCancelHandler(execution: ActiveExecution, cancelHandler: () => void): void {
+    if (execution.cancelled) {
+      try {
+        cancelHandler();
+      } catch {
+        // Ignore cancellation handler errors.
+      }
+      return;
+    }
+
+    execution.cancelHandlers.add(cancelHandler);
+  }
+
+  private throwIfCancelled(execution: ActiveExecution): void {
+    if (execution.cancelled) {
+      throw this.createCancellationError(execution);
+    }
+  }
+
+  private createCancellationError(execution: ActiveExecution): Error {
+    const error = new Error(execution.cancelReason ?? 'Run cancelled');
+    error.name = 'RunCancellationError';
+    return error;
+  }
+
+  private isCancellationError(error: unknown): boolean {
+    return error instanceof Error && error.name === 'RunCancellationError';
+  }
+
+  private isSqlCancellationError(error: unknown): boolean {
+    return (
+      error instanceof Error &&
+      ('code' in error ? String((error as { code?: unknown }).code) === 'ECANCEL' : false)
+    );
+  }
+
+  private isPostgresCancellationError(error: unknown): boolean {
+    if (!(error instanceof Error)) {
+      return false;
+    }
+
+    const pgError = error as Error & { code?: string };
+    return pgError.code === '57014' || /cancel/i.test(pgError.message);
   }
 
   private buildPostgresConfig(

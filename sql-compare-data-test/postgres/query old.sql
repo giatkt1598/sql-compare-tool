@@ -1,4 +1,7 @@
-﻿SELECT
+﻿WITH delay AS (
+  SELECT pg_sleep(6)
+)
+SELECT
   u.id,
   u.email,
   u.enabled,
@@ -9,6 +12,7 @@
   u.user_status,
   u.last_login_at
 FROM users u
+JOIN delay ON TRUE
 JOIN user_organization_access uoa ON uoa.user_id = u.id
 JOIN organization_access oa ON oa.id = uoa.organization_access_id
 JOIN organizations o ON o.id = oa.organization_id
@@ -20,4 +24,4 @@ WHERE (@id IS NULL OR u.id = @id)
   AND (@enabled IS NULL OR u.enabled = @enabled)
   AND (@org_access IS NULL OR oa.access_code = @org_access)
   AND (@location_access IS NULL OR la.access_code = @location_access)
-ORDER BY u.id, oa.access_code, la.access_code;
+ORDER BY  oa.access_code, la.access_code;

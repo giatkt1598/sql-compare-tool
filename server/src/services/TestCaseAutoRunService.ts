@@ -163,6 +163,10 @@ class TestCaseAutoRunService {
   private queueRun(manager: ManagedWatcher): void {
     if (manager.running) {
       manager.pending = true;
+      SqlService.cancelRun(
+        manager.testCaseId,
+        'The previous SQL execution was cancelled because the SQL files changed. Re-running the latest SQL now.'
+      );
       return;
     }
 

@@ -1,4 +1,7 @@
-﻿SELECT
+WITH delay AS (
+  SELECT pg_sleep(6)
+)
+SELECT
   u.id,
   u.email,
   u.enabled,
@@ -9,6 +12,7 @@
   u.user_status,
   u.last_login_at
 FROM users u
+JOIN delay ON TRUE
 JOIN user_organization_access uoa ON uoa.user_id = u.id
 JOIN organization_access oa ON oa.id = uoa.organization_access_id
 JOIN organizations o ON o.id = oa.organization_id

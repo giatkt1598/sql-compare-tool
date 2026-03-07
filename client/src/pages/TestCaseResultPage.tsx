@@ -216,6 +216,11 @@ function TestCaseResultPage() {
         if (payload.type === 'running') {
           setRunError(null);
           setIsRunning(true);
+          setToast({
+            open: true,
+            message: payload.message ?? 'The latest SQL execution is running.',
+            severity: 'success',
+          });
           setData((current) =>
             current
               ? {
