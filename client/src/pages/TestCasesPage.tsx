@@ -314,7 +314,7 @@ function TestCasesPage() {
       return <Chip label="Running" color="info" size="small" />;
     }
 
-    return <Chip label="-" variant="outlined" size="small" />;
+    return '-';
   };
 
   if (!profileId) {

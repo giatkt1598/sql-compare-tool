@@ -322,20 +322,30 @@ function TestCaseUpsertPage() {
               helperText="JSON string for sql parameters"
             />
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={formValue.compareInOrder}
-                    onChange={(event) =>
-                      setFormValue((current) => ({
-                        ...current,
-                        compareInOrder: event.target.checked,
-                      }))
-                    }
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={formValue.compareInOrder}
+                      onChange={(event) =>
+                        setFormValue((current) => ({
+                          ...current,
+                          compareInOrder: event.target.checked,
+                        }))
+                      }
+                    />
+                  }
+                  label="Compare in order"
+                  sx={{ mr: 0.5 }}
+                />
+                <Tooltip title="When enabled, the result comparison keeps the original row order. When disabled, the tool compares records without caring about row order.">
+                  <HelpOutlineOutlinedIcon
+                    fontSize="small"
+                    color="action"
+                    sx={{ cursor: 'help' }}
                   />
-                }
-                label="Compare in order"
-              />
+                </Tooltip>
+              </Box>
 
               <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 <FormControlLabel
