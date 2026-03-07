@@ -472,6 +472,12 @@ function TestCasesPage() {
           >
             New Test Case
           </Button>
+          <Button
+            variant="contained"
+            onClick={() => setRunManyDialog((current) => ({ ...current, open: true }))}
+          >
+            Run Many Test Cases
+          </Button>
         </Stack>
       </Stack>
 
@@ -720,18 +726,6 @@ function TestCasesPage() {
               rowsPerPageOptions={[10, 25, 50, 100]}
             />
           </TableContainer>
-
-          <Stack direction="row" spacing={2} justifyContent="flex-end" alignItems="center">
-            <Typography variant="body2" color="text.secondary">
-              Total test cases: {items.length}
-            </Typography>
-            <Button
-              variant="contained"
-              onClick={() => setRunManyDialog((current) => ({ ...current, open: true }))}
-            >
-              Run Many
-            </Button>
-          </Stack>
         </Stack>
       )}
 

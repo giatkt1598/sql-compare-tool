@@ -84,11 +84,7 @@ class TestCaseService {
 
     const profile = ProfileRepository.getById(existing.profileId);
     if (profile) {
-      const testCaseResultsDir = path.join(
-        FILE_PATHS.RESULTS,
-        this.toSafePathSegment(profile.name),
-        this.toSafePathSegment(existing.name)
-      );
+      const testCaseResultsDir = path.join(FILE_PATHS.RESULTS, profile.id, existing.id);
       if (fs.existsSync(testCaseResultsDir)) {
         fs.rmSync(testCaseResultsDir, { recursive: true, force: true });
       }
@@ -97,15 +93,6 @@ class TestCaseService {
     TestCaseAutoRunService.removeTestCase(id);
     TestCaseRepository.delete(id);
     return { message: 'TestCase deleted successfully', id };
-  }
-
-  private toSafePathSegment(value: string): string {
-    const sanitized = value
-      .trim()
-      // eslint-disable-next-line no-control-regex
-      .replace(/[<>:"/\\|?*\x00-\x1F]/g, '-')
-      .replace(/\s+/g, ' ');
-    return sanitized || 'unnamed';
   }
 }
 

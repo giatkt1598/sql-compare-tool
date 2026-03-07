@@ -285,8 +285,8 @@ class SqlService {
         }
       );
       const files = this.writeRunArtifacts(
-        profile.name,
-        effectiveTestCase.name,
+        profile.id,
+        testCase.id,
         nextExecutionCount,
         {
           oldSql,
@@ -358,8 +358,8 @@ class SqlService {
         compareDuration: null,
       });
       const files = this.writeRunArtifacts(
-        profile.name,
-        effectiveTestCase.name,
+        profile.id,
+        testCase.id,
         nextExecutionCount,
         {
           oldSql,
@@ -505,7 +505,7 @@ class SqlService {
       throw new Error(`No execution result found for testCase ${testCaseId}`);
     }
 
-    const runDir = this.resolveLatestRunDir(profile.name, testCase.name, testCase.executionCount);
+    const runDir = this.resolveLatestRunDir(profile.id, testCase.id, testCase.executionCount);
     const oldResultPath = path.join(runDir, 'old-result.json');
     const newResultPath = path.join(runDir, 'new-result.json');
     const diffResultPath = path.join(runDir, 'diff-result.json');
@@ -1427,8 +1427,8 @@ class SqlService {
   }
 
   private writeRunArtifacts(
-    profileName: string,
-    testCaseName: string,
+    profileId: string,
+    testCaseId: string,
     executionCount: number,
     payload: {
       oldSql: string;
@@ -1444,14 +1444,12 @@ class SqlService {
     newResultPath: string;
     diffResultPath: string;
   } {
-    const safeProfileName = this.toSafePathSegment(profileName);
-    const safeTestCaseName = this.toSafePathSegment(testCaseName);
     const formattedExecutionCount = this.formatExecutionCount(executionCount);
     const runDir = path.join(
       FILE_PATHS.RESULTS,
-      safeProfileName,
-      safeTestCaseName,
-      `${safeTestCaseName}-${formattedExecutionCount}`
+      profileId,
+      testCaseId,
+      `${testCaseId}-${formattedExecutionCount}`
     );
     fs.mkdirSync(runDir, { recursive: true });
     const dataDir = path.join(runDir, 'data');
@@ -1488,38 +1486,27 @@ class SqlService {
     };
   }
 
-  private toSafePathSegment(value: string): string {
-    const sanitized = value
-      .trim()
-      // eslint-disable-next-line no-control-regex
-      .replace(/[<>:"/\\|?*\x00-\x1F]/g, '-')
-      .replace(/\s+/g, ' ');
-    return sanitized || 'unnamed';
-  }
-
   private formatExecutionCount(value: number): string {
     return String(value).padStart(4, '0');
   }
 
   private resolveLatestRunDir(
-    profileName: string,
-    testCaseName: string,
+    profileId: string,
+    testCaseId: string,
     executionCount: number
   ): string {
-    const safeProfileName = this.toSafePathSegment(profileName);
-    const safeTestCaseName = this.toSafePathSegment(testCaseName);
     const expectedDir = path.join(
       FILE_PATHS.RESULTS,
-      safeProfileName,
-      safeTestCaseName,
-      `${safeTestCaseName}-${this.formatExecutionCount(executionCount)}`
+      profileId,
+      testCaseId,
+      `${testCaseId}-${this.formatExecutionCount(executionCount)}`
     );
 
     if (fs.existsSync(expectedDir)) {
       return expectedDir;
     }
 
-    throw new Error(`Latest result directory not found for testCase ${testCaseName}`);
+    throw new Error(`Latest result directory not found for testCase ${testCaseId}`);
   }
 
   private readJsonFile<T>(filePath: string, fallback: T): T {

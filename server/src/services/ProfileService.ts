@@ -55,10 +55,7 @@ class ProfileService {
     SqlParameterRepository.deleteByProfileId(id);
     TestCaseRepository.deleteByProfileId(id);
 
-    const profileResultsDir = path.join(
-      FILE_PATHS.RESULTS,
-      this.toSafePathSegment(existingProfile.name)
-    );
+    const profileResultsDir = path.join(FILE_PATHS.RESULTS, existingProfile.id);
     if (fs.existsSync(profileResultsDir)) {
       fs.rmSync(profileResultsDir, { recursive: true, force: true });
     }
@@ -86,15 +83,6 @@ class ProfileService {
       postgresCount: ProfileRepository.countByProvider('Postgres'),
       usedProviders: ProfileRepository.getUsedProviders(),
     };
-  }
-
-  private toSafePathSegment(value: string): string {
-    const sanitized = value
-      .trim()
-      // eslint-disable-next-line no-control-regex
-      .replace(/[<>:"/\\|?*\x00-\x1F]/g, '-')
-      .replace(/\s+/g, ' ');
-    return sanitized || 'unnamed';
   }
 }
 
