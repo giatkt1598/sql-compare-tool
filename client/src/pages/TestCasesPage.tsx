@@ -250,17 +250,6 @@ function TestCasesPage() {
                       </TableCell>
                       <TableCell>{item.status ?? '-'}</TableCell>
                       <TableCell align="right">
-                        <Tooltip title="Edit">
-                          <IconButton
-                            color="default"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              navigate(`/profiles/${profileId}/test-cases/${item.id}/edit`);
-                            }}
-                          >
-                            <EditOutlinedIcon />
-                          </IconButton>
-                        </Tooltip>
                         <Tooltip title="Run">
                           <IconButton
                             color="primary"
@@ -271,6 +260,17 @@ function TestCasesPage() {
                             }}
                           >
                             <PlayArrowOutlinedIcon />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Edit">
+                          <IconButton
+                            color="default"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              navigate(`/profiles/${profileId}/test-cases/${item.id}/edit`);
+                            }}
+                          >
+                            <EditOutlinedIcon />
                           </IconButton>
                         </Tooltip>
                         <Tooltip title="Delete">

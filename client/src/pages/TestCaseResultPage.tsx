@@ -17,11 +17,13 @@ import {
   TableHead,
   TablePagination,
   TableRow,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { sqlApi } from '../apis/sqlApi';
+import dayjs from 'dayjs';
 
 type QueryRow = Record<string, unknown>;
 
@@ -301,7 +303,15 @@ function TestCaseResultPage() {
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 Execution time:{' '}
-                {data.executionTime ? new Date(data.executionTime).toLocaleString() : '-'}
+                {data.executionTime ? (
+                  <span>
+                    <Tooltip title={new Date(data.executionTime).toLocaleString()}>
+                      <span>{dayjs(data.executionTime).fromNow()}</span>
+                    </Tooltip>
+                  </span>
+                ) : (
+                  '-'
+                )}
               </Typography>
 
               <Box sx={{ flexGrow: 1 }} />
