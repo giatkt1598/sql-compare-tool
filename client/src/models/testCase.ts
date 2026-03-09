@@ -1,5 +1,21 @@
 export type TestCaseStatus = 'success' | 'failed' | 'running' | 'error' | null;
 
+export interface LatestResultSummary {
+  executionTime: string;
+  parallelExecution?: boolean;
+  oldSqlDuration?: number | null;
+  newSqlDuration?: number | null;
+  compareDuration?: number | null;
+  error?: string;
+  oldCount?: number;
+  newCount?: number;
+  differenceCount?: number;
+  onlyInOldCount?: number;
+  onlyInNewCount?: number;
+  changedCount?: number;
+  matched?: boolean;
+}
+
 export interface TestCase {
   id: string;
   profileId: string;
@@ -15,6 +31,7 @@ export interface TestCase {
   error: string | null;
   executionDuration: number | null;
   executionTime: string | null;
+  latestResultSummary: LatestResultSummary | null;
   enabled: boolean;
   createdAt: string;
   updatedAt: string;

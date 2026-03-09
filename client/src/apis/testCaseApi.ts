@@ -1,6 +1,11 @@
 import type { TestCase } from '../models/testCase';
 import { ApiService } from './base/ApiService';
 
+type TestCaseMutationPayload = Omit<
+  TestCase,
+  'id' | 'createdAt' | 'updatedAt' | 'latestResultSummary'
+>;
+
 class TestCaseApi extends ApiService {
   constructor() {
     super('/api/test-cases');
@@ -14,14 +19,11 @@ class TestCaseApi extends ApiService {
     return this.get<TestCase>(id);
   }
 
-  create(payload: Omit<TestCase, 'id' | 'createdAt' | 'updatedAt'>) {
+  create(payload: TestCaseMutationPayload) {
     return this.post<TestCase>('', payload);
   }
 
-  update(
-    id: string,
-    payload: Partial<Omit<TestCase, 'id' | 'createdAt' | 'updatedAt'>>
-  ) {
+  update(id: string, payload: Partial<TestCaseMutationPayload>) {
     return this.patch<TestCase>(id, payload);
   }
 

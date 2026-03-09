@@ -19,24 +19,23 @@ interface ResultDiffItem {
   newRecord: QueryRow | null;
 }
 
-interface ResultDiffPayload {
-  summary: {
-    executionTime: string;
-    parallelExecution?: boolean;
-    oldSqlDuration?: number | null;
-    newSqlDuration?: number | null;
-    compareDuration?: number | null;
-    error?: string;
-    oldCount?: number;
-    newCount?: number;
-    differenceCount?: number;
-    onlyInOldCount?: number;
-    onlyInNewCount?: number;
-    changedCount?: number;
-    matched?: boolean;
-  };
-  differences: ResultDiffItem[];
+interface ResultSummary {
+  executionTime: string;
+  parallelExecution?: boolean;
+  oldSqlDuration?: number | null;
+  newSqlDuration?: number | null;
+  compareDuration?: number | null;
+  error?: string;
+  oldCount?: number;
+  newCount?: number;
+  differenceCount?: number;
+  onlyInOldCount?: number;
+  onlyInNewCount?: number;
+  changedCount?: number;
+  matched?: boolean;
 }
+
+type ResultDiffPayload = ResultDiffItem[];
 
 interface RunTestCaseResult {
   success: boolean;
@@ -49,11 +48,12 @@ interface RunTestCaseResult {
   executionDuration: number;
   executionTime: string;
   files: {
+    summaryResultPath: string;
     oldResultPath: string;
     newResultPath: string;
     diffResultPath: string;
   };
-  diffSummary: ResultDiffPayload['summary'];
+  diffSummary: ResultSummary;
 }
 
 interface RunTestCaseDraft {
@@ -110,6 +110,7 @@ interface LatestTestCaseResult {
   executionDuration: number | null;
   status: TestCaseStatus | null;
   error: string | null;
+  latestResultSummary: ResultSummary | null;
   availableColumns: Array<{
     key: string;
     diffCount: number;
@@ -118,8 +119,10 @@ interface LatestTestCaseResult {
   oldRows: QueryRows;
   newRows: QueryRows;
   diffPayload: ResultDiffPayload;
+  summary: ResultSummary;
   files: {
     runDir: string;
+    summaryResultPath: string;
     oldResultPath: string;
     newResultPath: string;
     diffResultPath: string;
@@ -294,13 +297,19 @@ class SqlService {
       const diffPayload = this.compareQueryResults(
         oldRows,
         newRows,
+        effectiveTestCase.compareInOrder
+      );
+      const compareDuration = Date.now() - compareStartedAt;
+      const summary = this.buildResultSummary(
+        oldRows,
+        newRows,
+        diffPayload,
         executedAt,
-        effectiveTestCase.compareInOrder,
         {
           parallelExecution: effectiveTestCase.parallelExecution,
           oldSqlDuration,
           newSqlDuration,
-          compareDuration: Date.now() - compareStartedAt,
+          compareDuration,
         }
       );
       const files = this.writeRunArtifacts(profile.id, testCase.id, nextExecutionCount, {
@@ -310,11 +319,12 @@ class SqlService {
         testCasePayload: effectiveTestCaseSnapshot,
         oldRows,
         newRows,
+        summary,
         diffPayload,
       });
 
       const executionDuration = Date.now() - startedAt;
-      const status: TestCaseStatus = diffPayload.summary.matched ? 'success' : 'failed';
+      const status: TestCaseStatus = summary.matched ? 'success' : 'failed';
 
       TestCaseRepository.update(testCase.id, {
         status,
@@ -353,7 +363,7 @@ class SqlService {
         executionDuration,
         executionTime: executedAt,
         files,
-        diffSummary: diffPayload.summary,
+        diffSummary: summary,
       };
     } catch (error) {
       if (this.isCancellationError(error)) {
@@ -376,7 +386,7 @@ class SqlService {
       };
       const executionDuration = Date.now() - startedAt;
       const errorMessage = error instanceof Error ? error.message : 'Unexpected error';
-      const diffPayload = this.buildErrorDiffPayload(executedAt, errorMessage, {
+      const summary = this.buildErrorSummary(executedAt, errorMessage, {
         parallelExecution: draft?.parallelExecution ?? testCase.parallelExecution,
         compareDuration: null,
       });
@@ -388,7 +398,8 @@ class SqlService {
           ...testCase.toJSON(),
           name: effectiveTestCase.name,
         },
-        diffPayload,
+        summary,
+        diffPayload: [],
       });
 
       try {
@@ -431,7 +442,7 @@ class SqlService {
         executionDuration,
         executionTime: executedAt,
         files,
-        diffSummary: diffPayload.summary,
+        diffSummary: summary,
       };
     } finally {
       this.clearExecution(execution);
@@ -566,26 +577,38 @@ class SqlService {
     }
 
     const runDir = this.resolveLatestRunDir(profile.id, testCase.id, testCase.executionCount);
+    const summaryResultPath = path.join(runDir, 'summary-result.json');
     const oldResultPath = path.join(runDir, 'old-result.json');
     const newResultPath = path.join(runDir, 'new-result.json');
     const diffResultPath = path.join(runDir, 'diff-result.json');
 
     const oldRows = this.readJsonFile<QueryRows>(oldResultPath, []);
     const newRows = this.readJsonFile<QueryRows>(newResultPath, []);
-    const diffPayload = this.readJsonFile<ResultDiffPayload>(diffResultPath, {
-      summary: {
-        executionTime: testCase.executionTime ?? '',
-        parallelExecution: testCase.parallelExecution,
-        oldSqlDuration: null,
-        newSqlDuration: null,
-        compareDuration: null,
-        error: testCase.error ?? undefined,
-      },
-      differences: [],
+    const diffPayload = this.readJsonFile<ResultDiffPayload>(diffResultPath, []);
+    const summary = this.readJsonFile<ResultSummary>(summaryResultPath, {
+      executionTime: testCase.executionTime ?? '',
+      parallelExecution: testCase.parallelExecution,
+      oldSqlDuration: null,
+      newSqlDuration: null,
+      compareDuration: null,
+      error: testCase.error ?? undefined,
     });
-    const availableColumns = this.buildColumnDiffStats(oldRows, newRows, diffPayload.differences);
+    const availableColumns = this.buildColumnDiffStats(oldRows, newRows, diffPayload);
     const visibleColumns = this.resolveVisibleColumns(availableColumns, selectedColumns);
     const filteredDiffPayload = this.filterDiffPayloadByColumns(diffPayload, visibleColumns);
+    const filteredSummary = this.buildResultSummary(
+      this.filterRowsByColumns(oldRows, visibleColumns),
+      this.filterRowsByColumns(newRows, visibleColumns),
+      filteredDiffPayload,
+      summary.executionTime,
+      {
+        parallelExecution: summary.parallelExecution ?? testCase.parallelExecution,
+        oldSqlDuration: summary.oldSqlDuration ?? null,
+        newSqlDuration: summary.newSqlDuration ?? null,
+        compareDuration: summary.compareDuration ?? null,
+        error: summary.error,
+      }
+    );
 
     return {
       testCaseId: testCase.id,
@@ -600,13 +623,16 @@ class SqlService {
       executionDuration: testCase.executionDuration,
       status: testCase.status,
       error: testCase.error,
+      latestResultSummary: summary,
       availableColumns,
       visibleColumns,
       oldRows: this.filterRowsByColumns(oldRows, visibleColumns),
       newRows: this.filterRowsByColumns(newRows, visibleColumns),
       diffPayload: filteredDiffPayload,
+      summary: filteredSummary,
       files: {
         runDir,
+        summaryResultPath,
         oldResultPath,
         newResultPath,
         diffResultPath,
@@ -987,37 +1013,20 @@ class SqlService {
   private compareQueryResults(
     oldRows: QueryRows,
     newRows: QueryRows,
-    executionTime: string,
-    compareInOrder: boolean,
-    executionMetadata: {
-      parallelExecution: boolean;
-      oldSqlDuration: number;
-      newSqlDuration: number;
-      compareDuration: number;
-    }
+    compareInOrder: boolean
   ): ResultDiffPayload {
     if (compareInOrder) {
-      return this.compareQueryResultsInOrder(oldRows, newRows, executionTime, executionMetadata);
+      return this.compareQueryResultsInOrder(oldRows, newRows);
     }
 
-    return this.compareQueryResultsIgnoreOrder(oldRows, newRows, executionTime, executionMetadata);
+    return this.compareQueryResultsIgnoreOrder(oldRows, newRows);
   }
 
   private compareQueryResultsInOrder(
     oldRows: QueryRows,
-    newRows: QueryRows,
-    executionTime: string,
-    executionMetadata: {
-      parallelExecution: boolean;
-      oldSqlDuration: number;
-      newSqlDuration: number;
-      compareDuration: number;
-    }
+    newRows: QueryRows
   ): ResultDiffPayload {
     const differences: ResultDiffItem[] = [];
-    let onlyInOldCount = 0;
-    let onlyInNewCount = 0;
-    let changedCount = 0;
     const maxLength = Math.max(oldRows.length, newRows.length);
 
     for (let i = 0; i < maxLength; i += 1) {
@@ -1025,7 +1034,6 @@ class SqlService {
       const newRecord = newRows[i] ?? null;
 
       if (oldRecord && !newRecord) {
-        onlyInOldCount += 1;
         differences.push({
           index: i,
           type: 'onlyInOld',
@@ -1036,7 +1044,6 @@ class SqlService {
       }
 
       if (!oldRecord && newRecord) {
-        onlyInNewCount += 1;
         differences.push({
           index: i,
           type: 'onlyInNew',
@@ -1047,7 +1054,6 @@ class SqlService {
       }
 
       if (oldRecord && newRecord && !this.deepEqual(oldRecord, newRecord)) {
-        changedCount += 1;
         differences.push({
           index: i,
           type: 'changed',
@@ -1057,40 +1063,14 @@ class SqlService {
       }
     }
 
-    return {
-      summary: {
-        executionTime,
-        parallelExecution: executionMetadata.parallelExecution,
-        oldSqlDuration: executionMetadata.oldSqlDuration,
-        newSqlDuration: executionMetadata.newSqlDuration,
-        compareDuration: executionMetadata.compareDuration,
-        oldCount: oldRows.length,
-        newCount: newRows.length,
-        differenceCount: differences.length,
-        onlyInOldCount,
-        onlyInNewCount,
-        changedCount,
-        matched: differences.length === 0,
-      },
-      differences,
-    };
+    return differences;
   }
 
   private compareQueryResultsIgnoreOrder(
     oldRows: QueryRows,
-    newRows: QueryRows,
-    executionTime: string,
-    executionMetadata: {
-      parallelExecution: boolean;
-      oldSqlDuration: number;
-      newSqlDuration: number;
-      compareDuration: number;
-    }
+    newRows: QueryRows
   ): ResultDiffPayload {
     const differences: ResultDiffItem[] = [];
-    let onlyInOldCount = 0;
-    let onlyInNewCount = 0;
-    let changedCount = 0;
     const unmatchedOld = this.collectUnmatchedRows(oldRows, newRows);
     const unmatchedNew = this.collectUnmatchedRows(newRows, oldRows);
     const maxLength = Math.max(unmatchedOld.length, unmatchedNew.length);
@@ -1100,7 +1080,6 @@ class SqlService {
       const newRecord = unmatchedNew[i] ?? null;
 
       if (oldRecord && newRecord) {
-        changedCount += 1;
         differences.push({
           index: i,
           type: 'changed',
@@ -1111,7 +1090,6 @@ class SqlService {
       }
 
       if (oldRecord) {
-        onlyInOldCount += 1;
         differences.push({
           index: i,
           type: 'onlyInOld',
@@ -1122,7 +1100,6 @@ class SqlService {
       }
 
       if (newRecord) {
-        onlyInNewCount += 1;
         differences.push({
           index: i,
           type: 'onlyInNew',
@@ -1132,23 +1109,7 @@ class SqlService {
       }
     }
 
-    return {
-      summary: {
-        executionTime,
-        parallelExecution: executionMetadata.parallelExecution,
-        oldSqlDuration: executionMetadata.oldSqlDuration,
-        newSqlDuration: executionMetadata.newSqlDuration,
-        compareDuration: executionMetadata.compareDuration,
-        oldCount: oldRows.length,
-        newCount: newRows.length,
-        differenceCount: differences.length,
-        onlyInOldCount,
-        onlyInNewCount,
-        changedCount,
-        matched: differences.length === 0,
-      },
-      differences,
-    };
+    return differences;
   }
 
   private collectUnmatchedRows(sourceRows: QueryRows, targetRows: QueryRows): QueryRows {
@@ -1184,7 +1145,7 @@ class SqlService {
       .map((item) => item.row);
   }
 
-  private buildErrorDiffPayload(
+  private buildErrorSummary(
     executionTime: string,
     error: string,
     metadata?: {
@@ -1193,17 +1154,19 @@ class SqlService {
       newSqlDuration?: number | null;
       compareDuration?: number | null;
     }
-  ): ResultDiffPayload {
+  ): ResultSummary {
     return {
-      summary: {
-        executionTime,
-        parallelExecution: metadata?.parallelExecution,
-        oldSqlDuration: metadata?.oldSqlDuration ?? null,
-        newSqlDuration: metadata?.newSqlDuration ?? null,
-        compareDuration: metadata?.compareDuration ?? null,
-        error,
-      },
-      differences: [],
+      executionTime,
+      parallelExecution: metadata?.parallelExecution,
+      oldSqlDuration: metadata?.oldSqlDuration ?? null,
+      newSqlDuration: metadata?.newSqlDuration ?? null,
+      compareDuration: metadata?.compareDuration ?? null,
+      error,
+      differenceCount: 0,
+      onlyInOldCount: 0,
+      onlyInNewCount: 0,
+      changedCount: 0,
+      matched: false,
     };
   }
 
@@ -1239,11 +1202,13 @@ class SqlService {
       newSql: string;
       parameterPayload: Record<string, unknown>;
       testCasePayload: TestCaseData;
+      summary: ResultSummary;
       diffPayload: ResultDiffPayload;
       oldRows?: QueryRows;
       newRows?: QueryRows;
     }
   ): {
+    summaryResultPath: string;
     oldResultPath: string;
     newResultPath: string;
     diffResultPath: string;
@@ -1261,6 +1226,7 @@ class SqlService {
 
     const oldResultPath = path.join(runDir, 'old-result.json');
     const newResultPath = path.join(runDir, 'new-result.json');
+    const summaryResultPath = path.join(runDir, 'summary-result.json');
     const diffResultPath = path.join(runDir, 'diff-result.json');
     const oldSqlPath = path.join(dataDir, 'old.sql');
     const newSqlPath = path.join(dataDir, 'new.sql');
@@ -1273,6 +1239,7 @@ class SqlService {
     if (payload.newRows) {
       fs.writeFileSync(newResultPath, JSON.stringify(payload.newRows, null, 2), 'utf8');
     }
+    fs.writeFileSync(summaryResultPath, JSON.stringify(payload.summary, null, 2), 'utf8');
     fs.writeFileSync(diffResultPath, JSON.stringify(payload.diffPayload, null, 2), 'utf8');
     if (payload.oldSql) {
       fs.writeFileSync(oldSqlPath, payload.oldSql, 'utf8');
@@ -1284,6 +1251,7 @@ class SqlService {
     fs.writeFileSync(testCasePath, JSON.stringify(payload.testCasePayload, null, 2), 'utf8');
 
     return {
+      summaryResultPath,
       oldResultPath,
       newResultPath,
       diffResultPath,
@@ -1401,7 +1369,7 @@ class SqlService {
     diffPayload: ResultDiffPayload,
     visibleColumns: string[]
   ): ResultDiffPayload {
-    const differences = diffPayload.differences
+    return diffPayload
       .map((difference) => {
         const oldRecord = this.filterRecordByColumns(difference.oldRecord, visibleColumns);
         const newRecord = this.filterRecordByColumns(difference.newRecord, visibleColumns);
@@ -1417,21 +1385,39 @@ class SqlService {
         };
       })
       .filter((difference): difference is ResultDiffItem => difference !== null);
+  }
 
+  private buildResultSummary(
+    oldRows: QueryRows,
+    newRows: QueryRows,
+    differences: ResultDiffItem[],
+    executionTime: string,
+    metadata: {
+      parallelExecution?: boolean;
+      oldSqlDuration?: number | null;
+      newSqlDuration?: number | null;
+      compareDuration?: number | null;
+      error?: string;
+    }
+  ): ResultSummary {
     const onlyInOldCount = differences.filter((difference) => difference.type === 'onlyInOld').length;
     const onlyInNewCount = differences.filter((difference) => difference.type === 'onlyInNew').length;
     const changedCount = differences.filter((difference) => difference.type === 'changed').length;
 
     return {
-      summary: {
-        ...diffPayload.summary,
-        differenceCount: differences.length,
-        onlyInOldCount,
-        onlyInNewCount,
-        changedCount,
-        matched: differences.length === 0,
-      },
-      differences,
+      executionTime,
+      parallelExecution: metadata.parallelExecution,
+      oldSqlDuration: metadata.oldSqlDuration ?? null,
+      newSqlDuration: metadata.newSqlDuration ?? null,
+      compareDuration: metadata.compareDuration ?? null,
+      error: metadata.error,
+      oldCount: oldRows.length,
+      newCount: newRows.length,
+      differenceCount: differences.length,
+      onlyInOldCount,
+      onlyInNewCount,
+      changedCount,
+      matched: differences.length === 0,
     };
   }
 

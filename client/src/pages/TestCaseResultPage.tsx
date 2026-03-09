@@ -257,10 +257,10 @@ function TestCaseResultPage() {
     return <Alert severity="error">profileId and testCaseId are required</Alert>;
   }
 
-  const combinedRows = data ? buildCombinedRows(data.diffPayload.differences) : [];
+  const combinedRows = data ? buildCombinedRows(data.diffPayload) : [];
   const schema = data?.visibleColumns ?? [];
   const pagedRows = combinedRows.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
-  const latestRunError = runError ?? data?.error ?? data?.diffPayload.summary.error ?? null;
+  const latestRunError = runError ?? data?.error ?? data?.summary.error ?? null;
   const availableColumns = data?.availableColumns ?? [];
   const shouldShowAppliedFilterSummary =
     appliedSelectedColumns.length > 0 && appliedSelectedColumns.length < availableColumns.length;
@@ -456,7 +456,7 @@ function TestCaseResultPage() {
                     Parallel Execution
                   </Typography>
                   <Typography variant="body2" sx={{ mt: 0.75 }}>
-                    {(data.diffPayload.summary.parallelExecution ?? data.parallelExecution)
+                    {(data.summary.parallelExecution ?? data.parallelExecution)
                       ? 'On'
                       : 'Off'}
                   </Typography>
@@ -493,8 +493,8 @@ function TestCaseResultPage() {
                     Old SQL Duration
                   </Typography>
                   <Typography variant="body2" sx={{ mt: 0.75 }}>
-                    {typeof data.diffPayload.summary.oldSqlDuration === 'number'
-                      ? `${data.diffPayload.summary.oldSqlDuration.toLocaleString()} ms`
+                    {typeof data.summary.oldSqlDuration === 'number'
+                      ? `${data.summary.oldSqlDuration.toLocaleString()} ms`
                       : '-'}
                   </Typography>
                 </Box>
@@ -504,8 +504,8 @@ function TestCaseResultPage() {
                     New SQL Duration
                   </Typography>
                   <Typography variant="body2" sx={{ mt: 0.75 }}>
-                    {typeof data.diffPayload.summary.newSqlDuration === 'number'
-                      ? `${data.diffPayload.summary.newSqlDuration.toLocaleString()} ms`
+                    {typeof data.summary.newSqlDuration === 'number'
+                      ? `${data.summary.newSqlDuration.toLocaleString()} ms`
                       : '-'}
                   </Typography>
                 </Box>
@@ -515,8 +515,8 @@ function TestCaseResultPage() {
                     Compare Duration
                   </Typography>
                   <Typography variant="body2" sx={{ mt: 0.75 }}>
-                    {typeof data.diffPayload.summary.compareDuration === 'number'
-                      ? `${data.diffPayload.summary.compareDuration.toLocaleString()} ms`
+                    {typeof data.summary.compareDuration === 'number'
+                      ? `${data.summary.compareDuration.toLocaleString()} ms`
                       : '-'}
                   </Typography>
                 </Box>
@@ -526,7 +526,7 @@ function TestCaseResultPage() {
                     Old Rows Count
                   </Typography>
                   <Typography variant="body2" sx={{ mt: 0.75 }}>
-                    {data.diffPayload.summary.oldCount}
+                    {data.summary.oldCount}
                   </Typography>
                 </Box>
 
@@ -535,7 +535,7 @@ function TestCaseResultPage() {
                     New Rows Count
                   </Typography>
                   <Typography variant="body2" sx={{ mt: 0.75 }}>
-                    {data.diffPayload.summary.newCount}
+                    {data.summary.newCount}
                   </Typography>
                 </Box>
               </Box>

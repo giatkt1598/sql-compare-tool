@@ -42,6 +42,7 @@ export interface SqlDiffSummary {
 }
 
 export interface SqlRunResultFiles {
+  summaryResultPath: string;
   oldResultPath: string;
   newResultPath: string;
   diffResultPath: string;
@@ -105,6 +106,7 @@ export interface SqlLatestTestCaseResultResponse {
   executionDuration: number | null;
   status: TestCaseStatus;
   error: string | null;
+  latestResultSummary: SqlDiffSummary | null;
   availableColumns: Array<{
     key: string;
     diffCount: number;
@@ -112,12 +114,11 @@ export interface SqlLatestTestCaseResultResponse {
   visibleColumns: string[];
   oldRows: Array<Record<string, unknown>>;
   newRows: Array<Record<string, unknown>>;
-  diffPayload: {
-    summary: SqlDiffSummary;
-    differences: SqlDiffItem[];
-  };
+  summary: SqlDiffSummary;
+  diffPayload: SqlDiffItem[];
   files: {
     runDir: string;
+    summaryResultPath: string;
     oldResultPath: string;
     newResultPath: string;
     diffResultPath: string;

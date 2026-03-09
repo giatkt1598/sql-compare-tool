@@ -140,6 +140,7 @@ function TestCaseUpsertPage() {
             error: null,
             executionDuration: null,
             executionTime: null,
+            latestResultSummary: null,
             enabled: true,
             createdAt: '',
             updatedAt: '',

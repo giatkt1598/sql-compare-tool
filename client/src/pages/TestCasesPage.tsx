@@ -223,6 +223,7 @@ function TestCasesPage() {
                 error: result.error,
                 executionDuration: result.executionDuration,
                 executionTime: result.executionTime,
+                latestResultSummary: result.diffSummary,
               }
             : testCase
         )
@@ -369,6 +370,21 @@ function TestCasesPage() {
           {label}
         </Typography>
       </Tooltip>
+    );
+  };
+
+  const renderRowsCountCell = (item: TestCase) => {
+    const summary = item.latestResultSummary;
+    const oldRowsLabel =
+      typeof summary?.oldCount === 'number' ? summary.oldCount.toLocaleString() : '-';
+    const newRowsLabel =
+      typeof summary?.newCount === 'number' ? summary.newCount.toLocaleString() : '-';
+
+    return (
+      <Stack spacing={0.25}>
+        <Typography variant="body2">Old Rows: {oldRowsLabel}</Typography>
+        <Typography variant="body2">New Rows: {newRowsLabel}</Typography>
+      </Stack>
     );
   };
 
@@ -594,6 +610,7 @@ function TestCasesPage() {
                       Execution Time
                     </TableSortLabel>
                   </TableCell>
+                  <TableCell width={180}>Rows Count</TableCell>
                   <TableCell width={170}>
                     <TableSortLabel
                       active={sortField === 'parallelExecution'}
@@ -669,6 +686,7 @@ function TestCasesPage() {
                           '-'
                         )}
                       </TableCell>
+                      <TableCell>{renderRowsCountCell(item)}</TableCell>
 
                       <TableCell>
                         <Checkbox
