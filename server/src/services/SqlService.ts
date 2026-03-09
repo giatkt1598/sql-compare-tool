@@ -110,6 +110,11 @@ interface LatestTestCaseResult {
   executionDuration: number | null;
   status: TestCaseStatus | null;
   error: string | null;
+  availableColumns: Array<{
+    key: string;
+    diffCount: number;
+  }>;
+  visibleColumns: string[];
   oldRows: QueryRows;
   newRows: QueryRows;
   diffPayload: ResultDiffPayload;
@@ -545,7 +550,7 @@ class SqlService {
     await Promise.all(workers);
   }
 
-  getLatestTestCaseResult(testCaseId: string): LatestTestCaseResult {
+  getLatestTestCaseResult(testCaseId: string, selectedColumns?: string[]): LatestTestCaseResult {
     const testCase = TestCaseRepository.getById(testCaseId);
     if (!testCase) {
       throw new Error(`TestCase with ID ${testCaseId} not found`);
@@ -565,6 +570,23 @@ class SqlService {
     const newResultPath = path.join(runDir, 'new-result.json');
     const diffResultPath = path.join(runDir, 'diff-result.json');
 
+    const oldRows = this.readJsonFile<QueryRows>(oldResultPath, []);
+    const newRows = this.readJsonFile<QueryRows>(newResultPath, []);
+    const diffPayload = this.readJsonFile<ResultDiffPayload>(diffResultPath, {
+      summary: {
+        executionTime: testCase.executionTime ?? '',
+        parallelExecution: testCase.parallelExecution,
+        oldSqlDuration: null,
+        newSqlDuration: null,
+        compareDuration: null,
+        error: testCase.error ?? undefined,
+      },
+      differences: [],
+    });
+    const availableColumns = this.buildColumnDiffStats(oldRows, newRows, diffPayload.differences);
+    const visibleColumns = this.resolveVisibleColumns(availableColumns, selectedColumns);
+    const filteredDiffPayload = this.filterDiffPayloadByColumns(diffPayload, visibleColumns);
+
     return {
       testCaseId: testCase.id,
       profileId: profile.id,
@@ -578,19 +600,11 @@ class SqlService {
       executionDuration: testCase.executionDuration,
       status: testCase.status,
       error: testCase.error,
-      oldRows: this.readJsonFile<QueryRows>(oldResultPath, []),
-      newRows: this.readJsonFile<QueryRows>(newResultPath, []),
-      diffPayload: this.readJsonFile<ResultDiffPayload>(diffResultPath, {
-        summary: {
-          executionTime: testCase.executionTime ?? '',
-          parallelExecution: testCase.parallelExecution,
-          oldSqlDuration: null,
-          newSqlDuration: null,
-          compareDuration: null,
-          error: testCase.error ?? undefined,
-        },
-        differences: [],
-      }),
+      availableColumns,
+      visibleColumns,
+      oldRows: this.filterRowsByColumns(oldRows, visibleColumns),
+      newRows: this.filterRowsByColumns(newRows, visibleColumns),
+      diffPayload: filteredDiffPayload,
       files: {
         runDir,
         oldResultPath,
@@ -1310,6 +1324,154 @@ class SqlService {
     }
 
     return JSON.parse(content) as T;
+  }
+
+  private buildColumnDiffStats(
+    oldRows: QueryRows,
+    newRows: QueryRows,
+    differences: ResultDiffItem[]
+  ): Array<{ key: string; diffCount: number }> {
+    const columnKeys = new Set<string>();
+
+    for (const row of [...oldRows, ...newRows]) {
+      for (const key of Object.keys(row ?? {})) {
+        columnKeys.add(key);
+      }
+    }
+
+    const diffCounts = new Map<string, number>();
+    for (const key of columnKeys) {
+      diffCounts.set(key, 0);
+    }
+
+    for (const difference of differences) {
+      for (const key of columnKeys) {
+        if (this.isColumnDifferentForRow(difference, key)) {
+          diffCounts.set(key, (diffCounts.get(key) ?? 0) + 1);
+        }
+      }
+    }
+
+    return Array.from(columnKeys)
+      .sort((left, right) => left.localeCompare(right))
+      .map((key) => ({
+        key,
+        diffCount: diffCounts.get(key) ?? 0,
+      }));
+  }
+
+  private resolveVisibleColumns(
+    availableColumns: Array<{ key: string; diffCount: number }>,
+    selectedColumns?: string[]
+  ): string[] {
+    const selectedColumnSet =
+      selectedColumns === undefined
+        ? new Set(availableColumns.map((column) => column.key))
+        : new Set(selectedColumns);
+
+    return availableColumns
+      .filter((column) => selectedColumnSet.has(column.key) && column.diffCount > 0)
+      .map((column) => column.key);
+  }
+
+  private filterRowsByColumns(rows: QueryRows, columns: string[]): QueryRows {
+    return rows.map((row) => this.filterRowByColumns(row, columns));
+  }
+
+  private filterRowByColumns(row: QueryRow, columns: string[]): QueryRow {
+    const filteredEntries = columns
+      .filter((column) => Object.prototype.hasOwnProperty.call(row, column))
+      .map((column) => [column, row[column]] as const);
+
+    return Object.fromEntries(filteredEntries);
+  }
+
+  private filterRecordByColumns(
+    record: QueryRow | null,
+    columns: string[]
+  ): QueryRow | null {
+    if (!record) {
+      return null;
+    }
+
+    return this.filterRowByColumns(record, columns);
+  }
+
+  private filterDiffPayloadByColumns(
+    diffPayload: ResultDiffPayload,
+    visibleColumns: string[]
+  ): ResultDiffPayload {
+    const differences = diffPayload.differences
+      .map((difference) => {
+        const oldRecord = this.filterRecordByColumns(difference.oldRecord, visibleColumns);
+        const newRecord = this.filterRecordByColumns(difference.newRecord, visibleColumns);
+
+        if (!this.hasVisibleDifference(difference.type, oldRecord, newRecord)) {
+          return null;
+        }
+
+        return {
+          ...difference,
+          oldRecord,
+          newRecord,
+        };
+      })
+      .filter((difference): difference is ResultDiffItem => difference !== null);
+
+    const onlyInOldCount = differences.filter((difference) => difference.type === 'onlyInOld').length;
+    const onlyInNewCount = differences.filter((difference) => difference.type === 'onlyInNew').length;
+    const changedCount = differences.filter((difference) => difference.type === 'changed').length;
+
+    return {
+      summary: {
+        ...diffPayload.summary,
+        differenceCount: differences.length,
+        onlyInOldCount,
+        onlyInNewCount,
+        changedCount,
+        matched: differences.length === 0,
+      },
+      differences,
+    };
+  }
+
+  private hasVisibleDifference(
+    type: ResultDiffItem['type'],
+    oldRecord: QueryRow | null,
+    newRecord: QueryRow | null
+  ): boolean {
+    if (type === 'onlyInOld') {
+      return Object.keys(oldRecord ?? {}).length > 0;
+    }
+
+    if (type === 'onlyInNew') {
+      return Object.keys(newRecord ?? {}).length > 0;
+    }
+
+    const keys = new Set([
+      ...Object.keys(oldRecord ?? {}),
+      ...Object.keys(newRecord ?? {}),
+    ]);
+
+    for (const key of keys) {
+      if (!this.deepEqual(oldRecord?.[key], newRecord?.[key])) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  private isColumnDifferentForRow(difference: ResultDiffItem, key: string): boolean {
+    if (difference.type === 'onlyInOld') {
+      return Boolean(difference.oldRecord) && Object.prototype.hasOwnProperty.call(difference.oldRecord, key);
+    }
+
+    if (difference.type === 'onlyInNew') {
+      return Boolean(difference.newRecord) && Object.prototype.hasOwnProperty.call(difference.newRecord, key);
+    }
+
+    return !this.deepEqual(difference.oldRecord?.[key], difference.newRecord?.[key]);
   }
 }
 

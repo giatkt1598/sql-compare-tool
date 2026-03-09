@@ -145,6 +145,15 @@ class SqlController {
   getLatestTestCaseResult(req: Request, res: Response): void {
     try {
       const testCaseId = String(req.params.testCaseId ?? '').trim();
+      const hasColumnsQuery = Object.prototype.hasOwnProperty.call(req.query, 'columns');
+      const rawColumns = Array.isArray(req.query.columns)
+        ? req.query.columns.join(',')
+        : String(req.query.columns ?? '');
+      const parsedColumns = rawColumns
+            .split(',')
+            .map((column) => column.trim())
+            .filter(Boolean);
+      const selectedColumns = hasColumnsQuery && parsedColumns.length > 0 ? parsedColumns : undefined;
       if (!testCaseId) {
         res.status(400).json({
           success: false,
@@ -153,7 +162,7 @@ class SqlController {
         return;
       }
 
-      const result = SqlService.getLatestTestCaseResult(testCaseId);
+      const result = SqlService.getLatestTestCaseResult(testCaseId, selectedColumns);
       res.status(200).json(result);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unexpected error';

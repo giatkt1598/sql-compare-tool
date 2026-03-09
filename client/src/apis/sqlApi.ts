@@ -46,8 +46,14 @@ class SqlApi extends ApiService {
     return this.post<SqlRunManyTestCasesResponse>('/run-many-test-cases', payload);
   }
 
-  getLatestTestCaseResult(testCaseId: string) {
-    return this.get<SqlLatestTestCaseResultResponse>(`/test-cases/${testCaseId}/latest-result`);
+  getLatestTestCaseResult(testCaseId: string, selectedColumns?: string[]) {
+    const query =
+      selectedColumns === undefined
+        ? ''
+        : `?columns=${encodeURIComponent(selectedColumns.join(','))}`;
+    return this.get<SqlLatestTestCaseResultResponse>(
+      `/test-cases/${testCaseId}/latest-result${query}`
+    );
   }
 }
 

@@ -23,8 +23,10 @@ import {
   Typography,
 } from '@mui/material';
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { sqlApi } from '../apis/sqlApi';
+import type { SqlLatestTestCaseResultResponse } from '../apis/sqlApi.types';
+import MultiSelectFilter from '../components/common/MultiSelectFilter';
 import { testCaseApi } from '../apis/testCaseApi';
 import dayjs from 'dayjs';
 
@@ -37,40 +39,7 @@ interface ResultDiffItem {
   newRecord: QueryRow | null;
 }
 
-interface LatestTestCaseResult {
-  testCaseId: string;
-  profileId: string;
-  name: string;
-  enabled: boolean;
-  compareInOrder: boolean;
-  parallelExecution: boolean;
-  autoRunWhenSqlChanges: boolean;
-  executionCount: number;
-  executionTime: string | null;
-  executionDuration: number | null;
-  status: 'success' | 'failed' | 'running' | 'error' | null;
-  error: string | null;
-  oldRows: QueryRow[];
-  newRows: QueryRow[];
-  diffPayload: {
-    summary: {
-      executionTime: string;
-      parallelExecution?: boolean;
-      oldSqlDuration?: number | null;
-      newSqlDuration?: number | null;
-      compareDuration?: number | null;
-      error?: string;
-      oldCount?: number;
-      newCount?: number;
-      differenceCount?: number;
-      onlyInOldCount?: number;
-      onlyInNewCount?: number;
-      changedCount?: number;
-      matched?: boolean;
-    };
-    differences: ResultDiffItem[];
-  };
-}
+type LatestTestCaseResult = SqlLatestTestCaseResultResponse;
 
 interface ToastState {
   open: boolean;
@@ -168,6 +137,7 @@ function getDiffLabel(diffType: CombinedRow['diffType']) {
 function TestCaseResultPage() {
   const navigate = useNavigate();
   const { profileId, testCaseId } = useParams<{ profileId: string; testCaseId: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [data, setData] = useState<LatestTestCaseResult | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -176,20 +146,28 @@ function TestCaseResultPage() {
   const [isRunning, setIsRunning] = useState(false);
   const [isAutoRunSaving, setIsAutoRunSaving] = useState(false);
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(25);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [appliedSelectedColumns, setAppliedSelectedColumns] = useState<string[]>([]);
   const [toast, setToast] = useState<ToastState>({
     open: false,
     message: '',
     severity: 'success',
   });
+  const columnsQueryParam = searchParams.get('columns');
 
-  const fetchResult = async (nextTestCaseId: string) => {
+  const fetchResult = async (nextTestCaseId: string, selectedColumns?: string[]) => {
     setIsLoading(true);
     setError(null);
     try {
-      const result = await sqlApi.getLatestTestCaseResult(nextTestCaseId);
+      const result = await sqlApi.getLatestTestCaseResult(nextTestCaseId, selectedColumns);
+      const availableKeys = result.availableColumns.map((column) => column.key);
+      const nextAppliedSelection =
+        selectedColumns === undefined
+          ? availableKeys
+          : selectedColumns.filter((column) => availableKeys.includes(column));
       setData(result);
       setIsRunning(result.status === 'running');
+      setAppliedSelectedColumns(nextAppliedSelection);
       setPage(0);
     } catch (fetchError) {
       setError(fetchError instanceof Error ? fetchError.message : 'Load latest result failed');
@@ -205,8 +183,16 @@ function TestCaseResultPage() {
       return;
     }
 
-    void fetchResult(testCaseId);
-  }, [testCaseId]);
+    const initialSelectedColumns =
+      columnsQueryParam === null
+        ? undefined
+        : columnsQueryParam
+            .split(',')
+            .map((column) => column.trim())
+            .filter(Boolean);
+
+    void fetchResult(testCaseId, initialSelectedColumns);
+  }, [testCaseId, columnsQueryParam]);
 
   useEffect(() => {
     if (!testCaseId) {
@@ -248,7 +234,7 @@ function TestCaseResultPage() {
             setRunError(payload.message);
           }
 
-          void fetchResult(testCaseId);
+          void fetchResult(testCaseId, appliedSelectedColumns);
         }
       } catch {
         // Ignore malformed event payloads.
@@ -265,29 +251,19 @@ function TestCaseResultPage() {
       eventSource.removeEventListener('error', handleStreamEvent);
       eventSource.close();
     };
-  }, [testCaseId]);
+  }, [testCaseId, appliedSelectedColumns]);
 
   if (!profileId || !testCaseId) {
     return <Alert severity="error">profileId and testCaseId are required</Alert>;
   }
 
   const combinedRows = data ? buildCombinedRows(data.diffPayload.differences) : [];
-  const schema = data
-    ? Array.from(
-        new Set(
-          [
-            ...data.oldRows,
-            ...data.newRows,
-            ...data.diffPayload.differences.flatMap((item) => [
-              item.oldRecord ?? {},
-              item.newRecord ?? {},
-            ]),
-          ].flatMap((row) => Object.keys(row ?? {}))
-        )
-      )
-    : [];
+  const schema = data?.visibleColumns ?? [];
   const pagedRows = combinedRows.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
   const latestRunError = runError ?? data?.error ?? data?.diffPayload.summary.error ?? null;
+  const availableColumns = data?.availableColumns ?? [];
+  const shouldShowAppliedFilterSummary =
+    appliedSelectedColumns.length > 0 && appliedSelectedColumns.length < availableColumns.length;
 
   const handleRunTestCase = async () => {
     if (!testCaseId) {
@@ -298,7 +274,7 @@ function TestCaseResultPage() {
     setRunError(null);
     try {
       const result = await sqlApi.runTestCase(testCaseId);
-      await fetchResult(testCaseId);
+      await fetchResult(testCaseId, appliedSelectedColumns);
       if (result.success) {
         setToast({
           open: true,
@@ -350,6 +326,36 @@ function TestCaseResultPage() {
     }
   };
 
+  const handleApplyColumnFilter = (nextSelection: string[]) => {
+    const normalizedNextSelection = data
+      ? nextSelection.filter((column) =>
+          data.availableColumns.some((availableColumn) => availableColumn.key === column)
+        )
+      : nextSelection;
+    if (
+      normalizedNextSelection.length === appliedSelectedColumns.length &&
+      normalizedNextSelection.every((column) => appliedSelectedColumns.includes(column))
+    ) {
+      return;
+    }
+
+    if (!testCaseId) {
+      return;
+    }
+
+    const nextSearchParams = new URLSearchParams(searchParams);
+    if (normalizedNextSelection.length === 0) {
+      nextSearchParams.set('columns', '');
+    } else {
+      nextSearchParams.set('columns', normalizedNextSelection.join(','));
+    }
+    setSearchParams(nextSearchParams, { replace: true });
+  };
+
+  const handleRemoveColumnFilter = (columnToRemove: string) => {
+    handleApplyColumnFilter(appliedSelectedColumns.filter((column) => column !== columnToRemove));
+  };
+
   return (
     <Stack spacing={3}>
       <Stack
@@ -359,7 +365,9 @@ function TestCaseResultPage() {
         alignItems={{ xs: 'flex-start', sm: 'center' }}
       >
         <Stack spacing={0.5}>
-          <Typography variant="h4">Latest Test Case Result</Typography>
+          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+            <Typography variant="h4">Latest Test Case Result</Typography>
+          </Stack>
           <Typography color="text.secondary">Test Case ID: {testCaseId}</Typography>
         </Stack>
         <Stack direction="row" spacing={1.5}>
@@ -401,7 +409,7 @@ function TestCaseResultPage() {
                     xs: '1fr',
                     sm: 'repeat(2, minmax(0, 1fr))',
                     md: 'repeat(4, minmax(0, 1fr))',
-                    lg: 'repeat(8, minmax(0, 1fr))',
+                    lg: 'repeat(10, minmax(0, 1fr))',
                   },
                   gap: 1.25,
                   alignItems: 'stretch',
@@ -512,6 +520,24 @@ function TestCaseResultPage() {
                       : '-'}
                   </Typography>
                 </Box>
+
+                <Box sx={{ p: 1.25, border: 1, borderColor: 'divider', borderRadius: 1.5 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    Old Rows Count
+                  </Typography>
+                  <Typography variant="body2" sx={{ mt: 0.75 }}>
+                    {data.diffPayload.summary.oldCount}
+                  </Typography>
+                </Box>
+
+                <Box sx={{ p: 1.25, border: 1, borderColor: 'divider', borderRadius: 1.5 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    New Rows Count
+                  </Typography>
+                  <Typography variant="body2" sx={{ mt: 0.75 }}>
+                    {data.diffPayload.summary.newCount}
+                  </Typography>
+                </Box>
               </Box>
 
               <Stack direction="column" gap={0} sx={{}}>
@@ -548,6 +574,42 @@ function TestCaseResultPage() {
           </Paper>
 
           <TableContainer component={Paper}>
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={1.5}
+              justifyContent="space-between"
+              alignItems={{ xs: 'stretch', sm: 'center' }}
+              sx={{ px: 2, pt: 2 }}
+            >
+              <Box>
+                {shouldShowAppliedFilterSummary ? (
+                  <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                    <Typography variant="body2" color="text.secondary">
+                      Filter columns:
+                    </Typography>
+                    {appliedSelectedColumns.map((column) => (
+                      <Chip
+                        key={column}
+                        size="small"
+                        label={column}
+                        variant="filled"
+                        onDelete={() => handleRemoveColumnFilter(column)}
+                      />
+                    ))}
+                  </Stack>
+                ) : null}
+              </Box>
+              <MultiSelectFilter
+                items={availableColumns.map((column) => ({
+                  value: column.key,
+                  label: column.key,
+                  count: column.diffCount,
+                }))}
+                selectedValues={appliedSelectedColumns}
+                onApply={handleApplyColumnFilter}
+                tooltipLabel="Column Settings"
+              />
+            </Stack>
             {combinedRows.length === 0 ? (
               <Stack alignItems="center" justifyContent="center" py={8}>
                 <Typography color="text.secondary">No diff rows to display.</Typography>
@@ -557,9 +619,22 @@ function TestCaseResultPage() {
                 <TableHead>
                   <TableRow>
                     <TableCell width={120}>Diff</TableCell>
-                    {schema.map((key) => (
-                      <TableCell key={key}>{key}</TableCell>
-                    ))}
+                    {schema.map((key) => {
+                      const diffCount =
+                        data?.availableColumns.find((column) => column.key === key)?.diffCount ?? 0;
+                      return (
+                        <TableCell key={key}>
+                          <Stack direction="row" spacing={1} alignItems="center">
+                            <Typography variant="body2" fontWeight={600}>
+                              {key}
+                            </Typography>
+                            {diffCount && (
+                              <Chip size="small" label={diffCount} color="error" variant="filled" />
+                            )}
+                          </Stack>
+                        </TableCell>
+                      );
+                    })}
                   </TableRow>
                 </TableHead>
                 <TableBody>

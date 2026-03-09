@@ -105,6 +105,11 @@ export interface SqlLatestTestCaseResultResponse {
   executionDuration: number | null;
   status: TestCaseStatus;
   error: string | null;
+  availableColumns: Array<{
+    key: string;
+    diffCount: number;
+  }>;
+  visibleColumns: string[];
   oldRows: Array<Record<string, unknown>>;
   newRows: Array<Record<string, unknown>>;
   diffPayload: {
