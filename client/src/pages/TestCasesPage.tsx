@@ -598,7 +598,7 @@ function TestCasesPage() {
                       direction={sortField === 'executionDuration' ? sortDirection : 'asc'}
                       onClick={() => handleSort('executionDuration')}
                     >
-                      Execution Duration
+                      Execute Duration
                     </TableSortLabel>
                   </TableCell>
                   <TableCell width={160}>
@@ -607,7 +607,7 @@ function TestCasesPage() {
                       direction={sortField === 'executionTime' ? sortDirection : 'asc'}
                       onClick={() => handleSort('executionTime')}
                     >
-                      Execution Time
+                      Execute Time
                     </TableSortLabel>
                   </TableCell>
                   <TableCell width={180}>Rows Count</TableCell>
@@ -617,7 +617,7 @@ function TestCasesPage() {
                       direction={sortField === 'parallelExecution' ? sortDirection : 'asc'}
                       onClick={() => handleSort('parallelExecution')}
                     >
-                      Execution Parallel
+                      Execute Parallel
                     </TableSortLabel>
                   </TableCell>
                   <TableCell width={120}>
