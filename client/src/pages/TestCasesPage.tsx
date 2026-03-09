@@ -38,8 +38,11 @@ import {
 } from '@mui/material';
 import { type ChangeEvent, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { profileApi } from '../apis/profileApi';
 import { sqlApi } from '../apis/sqlApi';
 import { testCaseApi } from '../apis/testCaseApi';
+import DbBreadcrumbSubtitle from '../components/common/DbBreadcrumbSubtitle';
+import type { Profile } from '../models/profile';
 import type { TestCase } from '../models/testCase';
 
 dayjs.extend(relativeTime);
@@ -80,6 +83,7 @@ function TestCasesPage() {
   const navigate = useNavigate();
   const { profileId } = useParams<{ profileId: string }>();
   const [items, setItems] = useState<TestCase[]>([]);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastState>({
@@ -108,7 +112,13 @@ function TestCasesPage() {
       return;
     }
 
-    void fetchItems(profileId);
+    void Promise.all([fetchItems(profileId), profileApi.getById(profileId)])
+      .then(([, nextProfile]) => {
+        setProfile(nextProfile);
+      })
+      .catch((fetchError) => {
+        setError(fetchError instanceof Error ? fetchError.message : 'Load test cases failed');
+      });
   }, [profileId]);
 
   useEffect(() => {
@@ -485,7 +495,11 @@ function TestCasesPage() {
       >
         <Stack spacing={0.5}>
           <Typography variant="h4">Test Cases</Typography>
-          <Typography color="text.secondary">Profile ID: {profileId}</Typography>
+          <DbBreadcrumbSubtitle
+            provider={profile?.sqlProvider}
+            profileName={profile?.name}
+            tailLabel="Test Cases"
+          />
         </Stack>
         <Stack direction="row" spacing={1.5}>
           <Button

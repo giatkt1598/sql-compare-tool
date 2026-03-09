@@ -14,13 +14,16 @@ import {
 } from '@mui/material';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { profileApi } from '../apis/profileApi';
 import { sqlApi } from '../apis/sqlApi';
 import { sqlParameterApi } from '../apis/sqlParameterApi';
+import DbBreadcrumbSubtitle from '../components/common/DbBreadcrumbSubtitle';
 import SqlQueryPreviewDialog, {
   type SqlQueryPreviewDialogValue,
 } from '../components/test-cases/SqlQueryPreviewDialog';
 import TestCaseFormOptions from '../components/test-cases/TestCaseFormOptions';
 import { testCaseApi } from '../apis/testCaseApi';
+import type { Profile } from '../models/profile';
 import type { SqlParameter } from '../models/sqlParameter';
 import {
   defaultTestCaseFormInput,
@@ -82,6 +85,7 @@ function TestCaseUpsertPage() {
   const [isBuildingQuery, setIsBuildingQuery] = useState(false);
   const [formValue, setFormValue] = useState<TestCaseFormInput>(defaultTestCaseFormInput);
   const [existingTestCase, setExistingTestCase] = useState<TestCase | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isQueryDialogOpen, setIsQueryDialogOpen] = useState(false);
   const [queryTab, setQueryTab] = useState<'old' | 'new'>('old');
@@ -103,10 +107,12 @@ function TestCaseUpsertPage() {
       setIsLoading(true);
       setError(null);
       try {
-        const [parameters, cases] = await Promise.all([
+        const [parameters, cases, resolvedProfile] = await Promise.all([
           sqlParameterApi.getByProfileId(profileId),
           testCaseApi.getByProfileId(profileId),
+          profileApi.getById(profileId),
         ]);
+        setProfile(resolvedProfile);
 
         if (isEditMode && testCaseId) {
           const testCase = await testCaseApi.getById(testCaseId);
@@ -359,9 +365,13 @@ function TestCaseUpsertPage() {
           }}
         >
           <Typography variant="h6">{isEditMode ? 'Edit Test Case' : 'New Test Case'}</Typography>
-          <Typography variant="body2" color="text.secondary">
-            Profile: {profileId}
-          </Typography>
+          <DbBreadcrumbSubtitle
+            provider={profile?.sqlProvider}
+            profileName={profile?.name}
+            tailLabel={
+              isEditMode ? existingTestCase?.name ?? testCaseId ?? 'Edit Test Case' : formValue.name
+            }
+          />
         </Box>
 
         <Box sx={{ p: 3 }}>

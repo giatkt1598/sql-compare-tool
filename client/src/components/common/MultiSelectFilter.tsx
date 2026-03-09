@@ -184,7 +184,7 @@ export default function MultiSelectFilter({
               }}
             />
             <ListItemText primary={item.label} />
-            {item.count && (
+            {!!item.count && (
               <Box sx={{ ml: 1 }}>
                 <Chip size="small" color="error" label={item.count} />
               </Box>

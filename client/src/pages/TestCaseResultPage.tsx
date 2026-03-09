@@ -24,10 +24,13 @@ import {
 } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { profileApi } from '../apis/profileApi';
 import { sqlApi } from '../apis/sqlApi';
 import type { SqlLatestTestCaseResultResponse } from '../apis/sqlApi.types';
+import DbBreadcrumbSubtitle from '../components/common/DbBreadcrumbSubtitle';
 import MultiSelectFilter from '../components/common/MultiSelectFilter';
 import { testCaseApi } from '../apis/testCaseApi';
+import type { Profile } from '../models/profile';
 import dayjs from 'dayjs';
 
 type QueryRow = Record<string, unknown>;
@@ -140,6 +143,7 @@ function TestCaseResultPage() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [data, setData] = useState<LatestTestCaseResult | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [runError, setRunError] = useState<string | null>(null);
@@ -193,6 +197,19 @@ function TestCaseResultPage() {
 
     void fetchResult(testCaseId, initialSelectedColumns);
   }, [testCaseId, columnsQueryParam]);
+
+  useEffect(() => {
+    if (!profileId) {
+      return;
+    }
+
+    void profileApi
+      .getById(profileId)
+      .then((nextProfile) => setProfile(nextProfile))
+      .catch(() => {
+        // Keep page usable even if profile metadata fails to load.
+      });
+  }, [profileId]);
 
   useEffect(() => {
     if (!testCaseId) {
@@ -368,7 +385,11 @@ function TestCaseResultPage() {
           <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
             <Typography variant="h4">Latest Test Case Result</Typography>
           </Stack>
-          <Typography color="text.secondary">Test Case ID: {testCaseId}</Typography>
+          <DbBreadcrumbSubtitle
+            provider={profile?.sqlProvider}
+            profileName={profile?.name}
+            tailSegments={['Test Cases', data?.name ?? 'Test Case']}
+          />
         </Stack>
         <Stack direction="row" spacing={1.5}>
           <Button

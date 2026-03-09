@@ -13,6 +13,7 @@ import {
 } from '@mui/material';
 import { useRef, useState, type ChangeEvent, type SyntheticEvent } from 'react';
 import CheckIcon from '@mui/icons-material/Check';
+import DbProviderIcon from '../common/DbProviderIcon';
 import { type ProfileFormInput, type SqlConnection, type SqlProvider } from '../../models/profile';
 import {
   connectionFieldConfigByProvider,
@@ -251,7 +252,7 @@ function ProfileForm(props: ProfileFormProps) {
               <Tab
                 key={providerConfig.provider}
                 value={providerConfig.provider}
-                icon={<providerConfig.icon fontSize="small" />}
+                icon={<DbProviderIcon provider={providerConfig.provider} fontSize="small" />}
                 iconPosition="start"
                 label={providerConfig.label}
               />
