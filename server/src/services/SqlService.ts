@@ -272,7 +272,7 @@ class SqlService {
       const boundParams = this.mapBoundParameters(sqlParameters, rawParams);
 
       const oldQuery = {
-        label: path.basename(profile.oldSqlFilePath),
+        label: path.basename(profile.oldSqlFilePath) || 'Old SQL',
         sqlProvider: profile.sqlProvider,
         connection: profile.sqlConnection,
         queryText: oldSql,
@@ -280,7 +280,7 @@ class SqlService {
         boundParams,
       };
       const newQuery = {
-        label: path.basename(profile.newSqlFilePath),
+        label: path.basename(profile.newSqlFilePath) || 'New SQL',
         sqlProvider: profile.sqlProvider,
         connection: profile.sqlConnection,
         queryText: newSql,
@@ -300,18 +300,12 @@ class SqlService {
         effectiveTestCase.compareInOrder
       );
       const compareDuration = Date.now() - compareStartedAt;
-      const summary = this.buildResultSummary(
-        oldRows,
-        newRows,
-        diffPayload,
-        executedAt,
-        {
-          parallelExecution: effectiveTestCase.parallelExecution,
-          oldSqlDuration,
-          newSqlDuration,
-          compareDuration,
-        }
-      );
+      const summary = this.buildResultSummary(oldRows, newRows, diffPayload, executedAt, {
+        parallelExecution: effectiveTestCase.parallelExecution,
+        oldSqlDuration,
+        newSqlDuration,
+        compareDuration,
+      });
       const files = this.writeRunArtifacts(profile.id, testCase.id, nextExecutionCount, {
         oldSql,
         newSql,
@@ -1022,10 +1016,7 @@ class SqlService {
     return this.compareQueryResultsIgnoreOrder(oldRows, newRows);
   }
 
-  private compareQueryResultsInOrder(
-    oldRows: QueryRows,
-    newRows: QueryRows
-  ): ResultDiffPayload {
+  private compareQueryResultsInOrder(oldRows: QueryRows, newRows: QueryRows): ResultDiffPayload {
     const differences: ResultDiffItem[] = [];
     const maxLength = Math.max(oldRows.length, newRows.length);
 
@@ -1354,10 +1345,7 @@ class SqlService {
     return Object.fromEntries(filteredEntries);
   }
 
-  private filterRecordByColumns(
-    record: QueryRow | null,
-    columns: string[]
-  ): QueryRow | null {
+  private filterRecordByColumns(record: QueryRow | null, columns: string[]): QueryRow | null {
     if (!record) {
       return null;
     }
@@ -1400,8 +1388,12 @@ class SqlService {
       error?: string;
     }
   ): ResultSummary {
-    const onlyInOldCount = differences.filter((difference) => difference.type === 'onlyInOld').length;
-    const onlyInNewCount = differences.filter((difference) => difference.type === 'onlyInNew').length;
+    const onlyInOldCount = differences.filter(
+      (difference) => difference.type === 'onlyInOld'
+    ).length;
+    const onlyInNewCount = differences.filter(
+      (difference) => difference.type === 'onlyInNew'
+    ).length;
     const changedCount = differences.filter((difference) => difference.type === 'changed').length;
 
     return {
@@ -1434,10 +1426,7 @@ class SqlService {
       return Object.keys(newRecord ?? {}).length > 0;
     }
 
-    const keys = new Set([
-      ...Object.keys(oldRecord ?? {}),
-      ...Object.keys(newRecord ?? {}),
-    ]);
+    const keys = new Set([...Object.keys(oldRecord ?? {}), ...Object.keys(newRecord ?? {})]);
 
     for (const key of keys) {
       if (!this.deepEqual(oldRecord?.[key], newRecord?.[key])) {
@@ -1450,11 +1439,17 @@ class SqlService {
 
   private isColumnDifferentForRow(difference: ResultDiffItem, key: string): boolean {
     if (difference.type === 'onlyInOld') {
-      return Boolean(difference.oldRecord) && Object.prototype.hasOwnProperty.call(difference.oldRecord, key);
+      return (
+        Boolean(difference.oldRecord) &&
+        Object.prototype.hasOwnProperty.call(difference.oldRecord, key)
+      );
     }
 
     if (difference.type === 'onlyInNew') {
-      return Boolean(difference.newRecord) && Object.prototype.hasOwnProperty.call(difference.newRecord, key);
+      return (
+        Boolean(difference.newRecord) &&
+        Object.prototype.hasOwnProperty.call(difference.newRecord, key)
+      );
     }
 
     return !this.deepEqual(difference.oldRecord?.[key], difference.newRecord?.[key]);
