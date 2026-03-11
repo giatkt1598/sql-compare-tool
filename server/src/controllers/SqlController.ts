@@ -146,7 +146,7 @@ class SqlController {
     }
   }
 
-  getLatestTestCaseResult(req: Request, res: Response): void {
+  async getLatestTestCaseResult(req: Request, res: Response): Promise<void> {
     try {
       const testCaseId = String(req.params.testCaseId ?? '').trim();
       const hasColumnsQuery = Object.prototype.hasOwnProperty.call(req.query, 'columns');
@@ -166,7 +166,7 @@ class SqlController {
         return;
       }
 
-      const result = SqlService.getLatestTestCaseResult(testCaseId, selectedColumns);
+      const result = await SqlService.getLatestTestCaseResult(testCaseId, selectedColumns);
       res.status(200).json(result);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unexpected error';

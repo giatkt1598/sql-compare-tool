@@ -6,6 +6,7 @@ import ProfileRepository from '../repositories/ProfileRepository';
 import SqlParameterRepository from '../repositories/SqlParameterRepository';
 import TestCaseRepository from '../repositories/TestCaseRepository';
 import TestCaseEventService from './TestCaseEventService';
+import { readNdjsonToArray, writeNdjson } from '../utils/ndjson';
 import type { ProfileData, SqlProvider } from '../types/profile';
 import type { SqlParameterData, SqlParameterDataType } from '../types/sqlParameter';
 import type { TestCaseData, TestCaseStatus } from '../types/testCase';
@@ -116,8 +117,6 @@ interface LatestTestCaseResult {
     diffCount: number;
   }>;
   visibleColumns: string[];
-  oldRows: QueryRows;
-  newRows: QueryRows;
   diffPayload: ResultDiffPayload;
   summary: ResultSummary;
   files: {
@@ -300,7 +299,7 @@ class SqlService {
         effectiveTestCase.compareInOrder
       );
       const compareDuration = Date.now() - compareStartedAt;
-      const summary = this.buildResultSummary(oldRows, newRows, diffPayload, executedAt, {
+      const summary = this.buildResultSummary(diffPayload, executedAt, {
         parallelExecution: effectiveTestCase.parallelExecution,
         oldSqlDuration,
         newSqlDuration,
@@ -555,7 +554,10 @@ class SqlService {
     await Promise.all(workers);
   }
 
-  getLatestTestCaseResult(testCaseId: string, selectedColumns?: string[]): LatestTestCaseResult {
+  async getLatestTestCaseResult(
+    testCaseId: string,
+    selectedColumns?: string[]
+  ): Promise<LatestTestCaseResult> {
     const testCase = TestCaseRepository.getById(testCaseId);
     if (!testCase) {
       throw new Error(`TestCase with ID ${testCaseId} not found`);
@@ -576,9 +578,7 @@ class SqlService {
     const newResultPath = path.join(runDir, 'new-result.json');
     const diffResultPath = path.join(runDir, 'diff-result.json');
 
-    const oldRows = this.readJsonFile<QueryRows>(oldResultPath, []);
-    const newRows = this.readJsonFile<QueryRows>(newResultPath, []);
-    const diffPayload = this.readJsonFile<ResultDiffPayload>(diffResultPath, []);
+    const diffPayload = await readNdjsonToArray<ResultDiffItem>(diffResultPath);
     const summary = this.readJsonFile<ResultSummary>(summaryResultPath, {
       executionTime: testCase.executionTime ?? '',
       parallelExecution: testCase.parallelExecution,
@@ -587,22 +587,16 @@ class SqlService {
       compareDuration: null,
       error: testCase.error ?? undefined,
     });
-    const availableColumns = this.buildColumnDiffStats(oldRows, newRows, diffPayload);
+    const availableColumns = this.buildColumnDiffStats(diffPayload);
     const visibleColumns = this.resolveVisibleColumns(availableColumns, selectedColumns);
     const filteredDiffPayload = this.filterDiffPayloadByColumns(diffPayload, visibleColumns);
-    const filteredSummary = this.buildResultSummary(
-      this.filterRowsByColumns(oldRows, visibleColumns),
-      this.filterRowsByColumns(newRows, visibleColumns),
-      filteredDiffPayload,
-      summary.executionTime,
-      {
-        parallelExecution: summary.parallelExecution ?? testCase.parallelExecution,
-        oldSqlDuration: summary.oldSqlDuration ?? null,
-        newSqlDuration: summary.newSqlDuration ?? null,
-        compareDuration: summary.compareDuration ?? null,
-        error: summary.error,
-      }
-    );
+    const filteredSummary = this.buildResultSummary(filteredDiffPayload, summary.executionTime, {
+      parallelExecution: summary.parallelExecution ?? testCase.parallelExecution,
+      oldSqlDuration: summary.oldSqlDuration ?? null,
+      newSqlDuration: summary.newSqlDuration ?? null,
+      compareDuration: summary.compareDuration ?? null,
+      error: summary.error,
+    });
 
     return {
       testCaseId: testCase.id,
@@ -620,8 +614,6 @@ class SqlService {
       latestResultSummary: summary,
       availableColumns,
       visibleColumns,
-      oldRows: this.filterRowsByColumns(oldRows, visibleColumns),
-      newRows: this.filterRowsByColumns(newRows, visibleColumns),
       diffPayload: filteredDiffPayload,
       summary: filteredSummary,
       files: {
@@ -1225,13 +1217,13 @@ class SqlService {
     const testCasePath = path.join(dataDir, 'test-case.json');
 
     if (payload.oldRows) {
-      fs.writeFileSync(oldResultPath, JSON.stringify(payload.oldRows, null, 2), 'utf8');
+      writeNdjson(oldResultPath, payload.oldRows);
     }
     if (payload.newRows) {
-      fs.writeFileSync(newResultPath, JSON.stringify(payload.newRows, null, 2), 'utf8');
+      writeNdjson(newResultPath, payload.newRows);
     }
     fs.writeFileSync(summaryResultPath, JSON.stringify(payload.summary, null, 2), 'utf8');
-    fs.writeFileSync(diffResultPath, JSON.stringify(payload.diffPayload, null, 2), 'utf8');
+    writeNdjson(diffResultPath, payload.diffPayload);
     if (payload.oldSql) {
       fs.writeFileSync(oldSqlPath, payload.oldSql, 'utf8');
     }
@@ -1286,12 +1278,11 @@ class SqlService {
   }
 
   private buildColumnDiffStats(
-    oldRows: QueryRows,
-    newRows: QueryRows,
     differences: ResultDiffItem[]
   ): Array<{ key: string; diffCount: number }> {
     const columnKeys = new Set<string>();
-
+    const oldRows = differences.map((x) => x.oldRecord).filter((x) => x !== null) as QueryRows;
+    const newRows = differences.map((x) => x.newRecord).filter((x) => x !== null) as QueryRows;
     for (const row of [...oldRows, ...newRows]) {
       for (const key of Object.keys(row ?? {})) {
         columnKeys.add(key);
@@ -1376,8 +1367,6 @@ class SqlService {
   }
 
   private buildResultSummary(
-    oldRows: QueryRows,
-    newRows: QueryRows,
     differences: ResultDiffItem[],
     executionTime: string,
     metadata: {
@@ -1403,8 +1392,6 @@ class SqlService {
       newSqlDuration: metadata.newSqlDuration ?? null,
       compareDuration: metadata.compareDuration ?? null,
       error: metadata.error,
-      oldCount: oldRows.length,
-      newCount: newRows.length,
       differenceCount: differences.length,
       onlyInOldCount,
       onlyInNewCount,
