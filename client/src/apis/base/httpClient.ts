@@ -3,6 +3,10 @@ import axios, { AxiosError } from 'axios';
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
 
 function toErrorMessage(error: AxiosError): string {
+  if (error.message.toLowerCase().includes('invalid string length')) {
+    return 'Data too large, failed to load';
+  }
+
   if (error.code === 'ECONNABORTED') {
     return 'Request timed out';
   }
@@ -26,16 +30,16 @@ function toErrorMessage(error: AxiosError): string {
     typeof responseData.message === 'string' &&
     responseData.message.trim() !== ''
   ) {
+    if (responseData.message.toLowerCase().includes('invalid string length')) {
+      return 'Data too large, failed to load';
+    }
     return responseData.message;
   }
 
   return error.message || 'API request failed';
 }
 
-const API_TIMEOUT_MS = Number.parseInt(
-  import.meta.env.VITE_API_TIMEOUT_MS ?? '120000',
-  10
-);
+const API_TIMEOUT_MS = Number.parseInt(import.meta.env.VITE_API_TIMEOUT_MS ?? '120000', 10);
 
 export const httpClient = axios.create({
   baseURL: API_BASE_URL,

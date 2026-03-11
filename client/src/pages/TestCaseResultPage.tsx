@@ -461,7 +461,7 @@ function TestCaseResultPage() {
                             ? 'error'
                             : data.status === 'failed'
                               ? 'error'
-                              : 'default'
+                              : 'info'
                       }
                     />
                   </Box>
