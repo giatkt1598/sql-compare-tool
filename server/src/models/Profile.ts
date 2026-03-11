@@ -4,6 +4,7 @@ import {
   type ProfileData,
   type CreateProfileInput,
 } from '../types/profile';
+import { decryptPassword } from '../utils/passwordCrypto';
 
 class Profile implements ProfileData {
   id: string;
@@ -33,8 +34,8 @@ class Profile implements ProfileData {
       port: data.sqlConnection?.port || '',
       database: data.sqlConnection?.database || '',
       username: data.sqlConnection?.username || '',
-      password: data.sqlConnection?.password || '',
       ...data.sqlConnection,
+      password: decryptPassword(data.sqlConnection?.password || ''),
     };
     this.testCases = Array.isArray(data.testCases) ? data.testCases : [];
     this.createdAt = data.createdAt || new Date().toISOString();

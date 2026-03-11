@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import SqlService from '../services/SqlService';
 import { getRegisteredSqlProviders, isRegisteredSqlProvider } from '../services/sql-providers';
+import { decryptPassword } from '../utils/passwordCrypto';
 import type { SqlProvider } from '../types/profile';
 
 class SqlController {
@@ -25,7 +26,10 @@ class SqlController {
         return;
       }
 
-      const result = await SqlService.testConnection(sqlProvider, sqlConnection);
+      const result = await SqlService.testConnection(sqlProvider, {
+        ...sqlConnection,
+        password: decryptPassword(String(sqlConnection.password ?? '')),
+      });
       res.status(200).json(result);
     } catch (error) {
       res.status(400).json({

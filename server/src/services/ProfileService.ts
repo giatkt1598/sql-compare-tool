@@ -6,6 +6,7 @@ import ProfileRepository from '../repositories/ProfileRepository';
 import SqlParameterRepository from '../repositories/SqlParameterRepository';
 import TestCaseRepository from '../repositories/TestCaseRepository';
 import TestCaseAutoRunService from './TestCaseAutoRunService';
+import { encryptPassword } from '../utils/passwordCrypto';
 import type {
   CreateProfileInput,
   ProfileData,
@@ -91,7 +92,7 @@ class ProfileService {
     const bundle: ProfileBackupBundle = {
       version: 1,
       exportedAt: new Date().toISOString(),
-      profile: profile.toJSON(),
+      profile: this.encryptProfileForStorage(profile.toJSON()),
       sqlParameters,
       testCases,
     };
@@ -132,7 +133,7 @@ class ProfileService {
       this.deleteProfile(bundle.profile.id);
     }
 
-    this.appendRawItem(FILE_PATHS.PROFILES, bundle.profile);
+    this.appendRawItem(FILE_PATHS.PROFILES, this.encryptProfileForStorage(bundle.profile));
     this.appendRawItems(FILE_PATHS.SQL_PARAMETERS, bundle.sqlParameters);
     this.appendRawItems(FILE_PATHS.TEST_CASES, bundle.testCases);
 
@@ -233,6 +234,18 @@ class ProfileService {
       .replace(/\.\d{3}Z$/, 'Z');
 
     return `${this.sanitizeFileName(profileName)}-backup-${timestamp}`;
+  }
+
+  private encryptProfileForStorage(profile: ProfileData): ProfileData {
+    return {
+      ...profile,
+      sqlConnection: profile.sqlConnection
+        ? {
+            ...profile.sqlConnection,
+            password: encryptPassword(String(profile.sqlConnection.password ?? '')),
+          }
+        : profile.sqlConnection,
+    };
   }
 }
 

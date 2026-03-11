@@ -1,10 +1,24 @@
 import { FILE_PATHS } from '../config/fileConstants';
 import Profile from '../models/Profile';
+import { encryptPassword } from '../utils/passwordCrypto';
 import BaseRepository from './BaseRepository';
 
 class ProfileRepository extends BaseRepository<Profile, ReturnType<Profile['toJSON']>> {
   constructor() {
     super(FILE_PATHS.PROFILES, Profile);
+  }
+
+  protected saveAllRaw(items: ReturnType<Profile['toJSON']>[]): void {
+    const encryptedItems = items.map((item) => {
+      const sqlConnection = item.sqlConnection
+        ? {
+            ...item.sqlConnection,
+            password: encryptPassword(String(item.sqlConnection.password ?? '')),
+          }
+        : item.sqlConnection;
+      return { ...item, sqlConnection };
+    });
+    super.saveAllRaw(encryptedItems);
   }
 
   getByName(name: string): Profile | null {

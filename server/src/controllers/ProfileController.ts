@@ -1,8 +1,10 @@
 import type { Request, Response } from 'express';
 import ProfileService from '../services/ProfileService';
 import { getRegisteredSqlProviders, isRegisteredSqlProvider } from '../services/sql-providers';
+import { encryptPassword } from '../utils/passwordCrypto';
 import {
   type CreateProfileInput,
+  type ProfileData,
   type SqlProvider,
   type UpdateProfileInput,
 } from '../types/profile';
@@ -10,7 +12,9 @@ import {
 class ProfileController {
   getAllProfiles(_req: Request, res: Response): void {
     try {
-      const profiles = ProfileService.getAllProfiles();
+      const profiles = ProfileService.getAllProfiles().map((profile) =>
+        this.serializeProfile(profile.toJSON())
+      );
       res.status(200).json(profiles);
     } catch (error) {
       res.status(500).json({
@@ -24,7 +28,7 @@ class ProfileController {
     try {
       const id = String(req.params.id);
       const profile = ProfileService.getProfileById(id);
-      res.status(200).json(profile);
+      res.status(200).json(this.serializeProfile(profile.toJSON()));
     } catch (error) {
       res.status(404).json({
         success: false,
@@ -75,7 +79,7 @@ class ProfileController {
       }
 
       const newProfile = ProfileService.createProfile(profileData as CreateProfileInput);
-      res.status(201).json(newProfile);
+      res.status(201).json(this.serializeProfile(newProfile.toJSON()));
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unexpected error';
       const statusCode = message.includes('already exists') ? 409 : 400;
@@ -97,7 +101,7 @@ class ProfileController {
       }
 
       const updatedProfile = ProfileService.updateProfile(id, profileData);
-      res.status(200).json(updatedProfile);
+      res.status(200).json(this.serializeProfile(updatedProfile.toJSON()));
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unexpected error';
       const statusCode = message.includes('not found') ? 404 : 400;
@@ -181,7 +185,9 @@ class ProfileController {
         return;
       }
 
-      const profiles = ProfileService.getProfilesByProvider(provider);
+      const profiles = ProfileService.getProfilesByProvider(provider).map((profile) =>
+        this.serializeProfile(profile.toJSON())
+      );
       res.status(200).json(profiles);
     } catch (error) {
       res.status(500).json({
@@ -203,7 +209,9 @@ class ProfileController {
         return;
       }
 
-      const profiles = ProfileService.searchProfiles(keyword);
+      const profiles = ProfileService.searchProfiles(keyword).map((profile) =>
+        this.serializeProfile(profile.toJSON())
+      );
       res.status(200).json(profiles);
     } catch (error) {
       res.status(500).json({
@@ -226,7 +234,9 @@ class ProfileController {
         return;
       }
 
-      const profiles = ProfileService.getRecentProfiles(limit);
+      const profiles = ProfileService.getRecentProfiles(limit).map((profile) =>
+        this.serializeProfile(profile.toJSON())
+      );
       res.status(200).json(profiles);
     } catch (error) {
       res.status(500).json({
@@ -246,6 +256,20 @@ class ProfileController {
         message: error instanceof Error ? error.message : 'Unexpected error',
       });
     }
+  }
+
+  private serializeProfile(profile: ProfileData): ProfileData {
+    if (!profile.sqlConnection) {
+      return profile;
+    }
+
+    return {
+      ...profile,
+      sqlConnection: {
+        ...profile.sqlConnection,
+        password: encryptPassword(String(profile.sqlConnection.password ?? '')),
+      },
+    };
   }
 }
 
