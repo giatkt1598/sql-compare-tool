@@ -22,7 +22,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { profileApi } from '../apis/profileApi';
 import { sqlApi } from '../apis/sqlApi';
@@ -145,10 +145,10 @@ function TestCaseResultPage() {
   const [data, setData] = useState<LatestTestCaseResult | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isTableLoading, setIsTableLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [runError, setRunError] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState(false);
-  const [isAutoRunSaving, setIsAutoRunSaving] = useState(false);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [appliedSelectedColumns, setAppliedSelectedColumns] = useState<string[]>([]);
@@ -159,8 +159,12 @@ function TestCaseResultPage() {
   });
   const columnsQueryParam = searchParams.get('columns');
 
-  const fetchResult = async (nextTestCaseId: string, selectedColumns?: string[]) => {
-    setIsLoading(true);
+  const fetchResult = useCallback(async (nextTestCaseId: string, selectedColumns?: string[]) => {
+    if (data) {
+      setIsTableLoading(true);
+    } else {
+      setIsLoading(true);
+    }
     setError(null);
     try {
       const result = await sqlApi.getLatestTestCaseResult(nextTestCaseId, selectedColumns);
@@ -177,8 +181,10 @@ function TestCaseResultPage() {
       setError(fetchError instanceof Error ? fetchError.message : 'Load latest result failed');
     } finally {
       setIsLoading(false);
+      setIsTableLoading(false);
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!testCaseId) {
@@ -196,6 +202,7 @@ function TestCaseResultPage() {
             .filter(Boolean);
 
     void fetchResult(testCaseId, initialSelectedColumns);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [testCaseId, columnsQueryParam]);
 
   useEffect(() => {
@@ -268,7 +275,7 @@ function TestCaseResultPage() {
       eventSource.removeEventListener('error', handleStreamEvent);
       eventSource.close();
     };
-  }, [testCaseId, appliedSelectedColumns]);
+  }, [testCaseId, appliedSelectedColumns, fetchResult]);
 
   if (!profileId || !testCaseId) {
     return <Alert severity="error">profileId and testCaseId are required</Alert>;
@@ -315,7 +322,6 @@ function TestCaseResultPage() {
       return;
     }
 
-    setIsAutoRunSaving(true);
     setRunError(null);
     try {
       const updated = await testCaseApi.update(testCaseId, {
@@ -338,8 +344,6 @@ function TestCaseResultPage() {
       setRunError(
         updateError instanceof Error ? updateError.message : 'Update auto run setting failed'
       );
-    } finally {
-      setIsAutoRunSaving(false);
     }
   };
 
@@ -477,9 +481,7 @@ function TestCaseResultPage() {
                     Parallel Execution
                   </Typography>
                   <Typography variant="body2" sx={{ mt: 0.75 }}>
-                    {(data.summary.parallelExecution ?? data.parallelExecution)
-                      ? 'On'
-                      : 'Off'}
+                    {(data.summary.parallelExecution ?? data.parallelExecution) ? 'On' : 'Off'}
                   </Typography>
                 </Box>
 
@@ -547,7 +549,7 @@ function TestCaseResultPage() {
                     Old Rows Count
                   </Typography>
                   <Typography variant="body2" sx={{ mt: 0.75 }}>
-                    {data.summary.oldCount}
+                    {data.summary.oldCount ?? '-'}
                   </Typography>
                 </Box>
 
@@ -556,7 +558,7 @@ function TestCaseResultPage() {
                     New Rows Count
                   </Typography>
                   <Typography variant="body2" sx={{ mt: 0.75 }}>
-                    {data.summary.newCount}
+                    {data.summary.newCount ?? '-'}
                   </Typography>
                 </Box>
               </Box>
@@ -567,7 +569,7 @@ function TestCaseResultPage() {
                     variant="contained"
                     startIcon={<PlayArrowOutlinedIcon />}
                     onClick={() => void handleRunTestCase()}
-                    disabled={isRunning || isAutoRunSaving}
+                    disabled={isRunning}
                     sx={{ minWidth: { xs: 200, xl: 160 } }}
                   >
                     {isRunning ? 'Test case is running...' : 'Run Test Case'}
@@ -578,7 +580,6 @@ function TestCaseResultPage() {
                     <Checkbox
                       checked={data.autoRunWhenSqlChanges}
                       onChange={(event) => void handleAutoRunChange(event.target.checked)}
-                      disabled={isAutoRunSaving}
                       size="small"
                     />
                   }
@@ -594,7 +595,7 @@ function TestCaseResultPage() {
             ) : null}
           </Paper>
 
-          <TableContainer component={Paper}>
+          <Paper>
             <Stack
               direction={{ xs: 'column', sm: 'row' }}
               spacing={1.5}
@@ -631,110 +632,151 @@ function TestCaseResultPage() {
                 tooltipLabel="Column Settings"
               />
             </Stack>
-            {combinedRows.length === 0 ? (
-              <Stack alignItems="center" justifyContent="center" py={8}>
-                <Typography color="text.secondary">No diff rows to display.</Typography>
-              </Stack>
-            ) : (
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell width={120}>Diff</TableCell>
-                    {schema.map((key) => {
-                      const diffCount =
-                        data?.availableColumns.find((column) => column.key === key)?.diffCount ?? 0;
-                      return (
-                        <TableCell key={key}>
-                          <Stack direction="row" spacing={1} alignItems="center">
-                            <Typography variant="body2" fontWeight={600}>
-                              {key}
-                            </Typography>
-                            {diffCount && (
-                              <Chip size="small" label={diffCount} color="error" variant="filled" />
-                            )}
-                          </Stack>
-                        </TableCell>
-                      );
-                    })}
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {pagedRows.map((row) => (
-                    <TableRow
-                      key={row.index}
-                      sx={{ backgroundColor: getRowBackground(row.diffType) }}
-                    >
-                      <TableCell sx={{ fontWeight: 700 }}>{getDiffLabel(row.diffType)}</TableCell>
-                      {schema.map((key) => {
-                        const oldValue = row.oldRecord?.[key];
-                        const newValue = row.newRecord?.[key];
-                        const same = isSameValue(oldValue, newValue);
-                        const showOldValue = row.oldRecord !== null;
-                        const showNewValue = row.newRecord !== null;
-                        const highlightChangedPair = showOldValue && showNewValue && !same;
-
-                        if (same) {
+            <Box sx={{ position: 'relative' }}>
+              {combinedRows.length === 0 ? (
+                <Stack alignItems="center" justifyContent="center" py={8}>
+                  <Typography color="text.secondary">No diff rows to display.</Typography>
+                </Stack>
+              ) : (
+                <TableContainer
+                  sx={{
+                    maxHeight: 'calc(100vh - 360px)',
+                    overflowY: 'auto',
+                    mt: 2,
+                  }}
+                >
+                  <Table size="small" stickyHeader>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell width={120}>Diff</TableCell>
+                        {schema.map((key) => {
+                          const diffCount =
+                            data?.availableColumns.find((column) => column.key === key)
+                              ?.diffCount ?? 0;
                           return (
-                            <TableCell key={key}>{stringifyValue(newValue ?? oldValue)}</TableCell>
+                            <TableCell key={key}>
+                              <Stack direction="row" spacing={1} alignItems="center">
+                                <Typography variant="body2" fontWeight={600}>
+                                  {key}
+                                </Typography>
+                                {diffCount && (
+                                  <Tooltip
+                                    title={`Have ${diffCount} difference rows in this column`}
+                                    placement="top"
+                                  >
+                                    <Chip
+                                      sx={{ cursor: 'help' }}
+                                      size="small"
+                                      label={diffCount}
+                                      color="error"
+                                      variant="filled"
+                                    />
+                                  </Tooltip>
+                                )}
+                              </Stack>
+                            </TableCell>
                           );
-                        }
-
-                        return (
-                          <TableCell key={key}>
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                              <div>
-                                {row.oldRecord ? (
-                                  <Typography
-                                    variant="body2"
-                                    sx={{
-                                      display: 'inline-block',
-                                      ...(highlightChangedPair
-                                        ? {
-                                            px: 0.5,
-                                            py: 0.25,
-                                            bgcolor: 'rgba(244, 67, 54, 0.14)',
-                                            textDecoration: 'line-through',
-                                            borderRadius: 0.75,
-                                            mr: 0.75,
-                                          }
-                                        : {
-                                            textDecoration: 'none',
-                                          }),
-                                    }}
-                                  >
-                                    {stringifyValue(oldValue)}
-                                  </Typography>
-                                ) : null}
-                              </div>
-                              <div>
-                                {row.newRecord ? (
-                                  <Typography
-                                    variant="body2"
-                                    sx={{
-                                      display: 'inline-block',
-                                      ...(highlightChangedPair
-                                        ? {
-                                            px: 0.5,
-                                            py: 0.25,
-                                            bgcolor: 'rgba(76, 175, 80, 0.18)',
-                                            borderRadius: 0.75,
-                                          }
-                                        : null),
-                                    }}
-                                  >
-                                    {stringifyValue(newValue)}
-                                  </Typography>
-                                ) : null}
-                              </div>
-                            </Box>
+                        })}
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {pagedRows.map((row) => (
+                        <TableRow
+                          key={row.index}
+                          sx={{ backgroundColor: getRowBackground(row.diffType) }}
+                        >
+                          <TableCell sx={{ fontWeight: 700 }}>
+                            {getDiffLabel(row.diffType)}
                           </TableCell>
-                        );
-                      })}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
+                          {schema.map((key) => {
+                            const oldValue = row.oldRecord?.[key];
+                            const newValue = row.newRecord?.[key];
+                            const same = isSameValue(oldValue, newValue);
+                            const showOldValue = row.oldRecord !== null;
+                            const showNewValue = row.newRecord !== null;
+                            const highlightChangedPair = showOldValue && showNewValue && !same;
+
+                            if (same) {
+                              return (
+                                <TableCell key={key}>
+                                  {stringifyValue(newValue ?? oldValue)}
+                                </TableCell>
+                              );
+                            }
+
+                            return (
+                              <TableCell key={key}>
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                  <div>
+                                    {row.oldRecord ? (
+                                      <Typography
+                                        variant="body2"
+                                        sx={{
+                                          display: 'inline-block',
+                                          ...(highlightChangedPair
+                                            ? {
+                                                px: 0.5,
+                                                py: 0.25,
+                                                bgcolor: 'rgba(244, 67, 54, 0.14)',
+                                                textDecoration: 'line-through',
+                                                borderRadius: 0.75,
+                                                mr: 0.75,
+                                              }
+                                            : {
+                                                textDecoration: 'none',
+                                              }),
+                                        }}
+                                      >
+                                        {stringifyValue(oldValue)}
+                                      </Typography>
+                                    ) : null}
+                                  </div>
+                                  <div>
+                                    {row.newRecord ? (
+                                      <Typography
+                                        variant="body2"
+                                        sx={{
+                                          display: 'inline-block',
+                                          ...(highlightChangedPair
+                                            ? {
+                                                px: 0.5,
+                                                py: 0.25,
+                                                bgcolor: 'rgba(76, 175, 80, 0.18)',
+                                                borderRadius: 0.75,
+                                              }
+                                            : null),
+                                        }}
+                                      >
+                                        {stringifyValue(newValue)}
+                                      </Typography>
+                                    ) : null}
+                                  </div>
+                                </Box>
+                              </TableCell>
+                            );
+                          })}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+              {isTableLoading ? (
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    inset: 0,
+                    bgcolor: 'rgba(0, 0, 0, 0.08)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1,
+                  }}
+                >
+                  <CircularProgress />
+                </Box>
+              ) : null}
+            </Box>
             {combinedRows.length > 0 ? (
               <TablePagination
                 component="div"
@@ -749,7 +791,7 @@ function TestCaseResultPage() {
                 rowsPerPageOptions={[10, 25, 50, 100]}
               />
             ) : null}
-          </TableContainer>
+          </Paper>
         </Stack>
       )}
 

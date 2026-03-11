@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import readline from 'node:readline';
 
 const DEFAULT_CACHE_TTL_MS = 30 * 60 * 1000;
-const fileCache = new Map<string, { expiresAt: number; value: unknown }>();
+const fileCache = new Map<string, { timeout: NodeJS.Timeout; value: unknown }>();
 
 function buildCacheKey(filePath: string): string {
   try {
@@ -19,17 +19,22 @@ function getCachedFile<T>(filePath: string): T | null {
   if (!cached) {
     return null;
   }
-  if (Date.now() > cached.expiresAt) {
-    fileCache.delete(cacheKey);
-    return null;
-  }
   return cached.value as T;
 }
 
 function setCachedFile<T>(filePath: string, value: T): void {
   const cacheKey = buildCacheKey(filePath);
+  const existing = fileCache.get(cacheKey);
+  if (existing) {
+    clearTimeout(existing.timeout);
+  }
+
+  const timeout = setTimeout(() => {
+    fileCache.delete(cacheKey);
+  }, DEFAULT_CACHE_TTL_MS);
+
   fileCache.set(cacheKey, {
-    expiresAt: Date.now() + DEFAULT_CACHE_TTL_MS,
+    timeout,
     value,
   });
 }

@@ -111,7 +111,6 @@ interface LatestTestCaseResult {
   executionDuration: number | null;
   status: TestCaseStatus | null;
   error: string | null;
-  latestResultSummary: ResultSummary | null;
   availableColumns: Array<{
     key: string;
     diffCount: number;
@@ -299,7 +298,7 @@ class SqlService {
         effectiveTestCase.compareInOrder
       );
       const compareDuration = Date.now() - compareStartedAt;
-      const summary = this.buildResultSummary(diffPayload, executedAt, {
+      const summary = this.buildResultSummary(oldRows, newRows, diffPayload, executedAt, {
         parallelExecution: effectiveTestCase.parallelExecution,
         oldSqlDuration,
         newSqlDuration,
@@ -582,21 +581,11 @@ class SqlService {
     const summary = this.readJsonFile<ResultSummary>(summaryResultPath, {
       executionTime: testCase.executionTime ?? '',
       parallelExecution: testCase.parallelExecution,
-      oldSqlDuration: null,
-      newSqlDuration: null,
-      compareDuration: null,
       error: testCase.error ?? undefined,
     });
     const availableColumns = this.buildColumnDiffStats(diffPayload);
     const visibleColumns = this.resolveVisibleColumns(availableColumns, selectedColumns);
     const filteredDiffPayload = this.filterDiffPayloadByColumns(diffPayload, visibleColumns);
-    const filteredSummary = this.buildResultSummary(filteredDiffPayload, summary.executionTime, {
-      parallelExecution: summary.parallelExecution ?? testCase.parallelExecution,
-      oldSqlDuration: summary.oldSqlDuration ?? null,
-      newSqlDuration: summary.newSqlDuration ?? null,
-      compareDuration: summary.compareDuration ?? null,
-      error: summary.error,
-    });
 
     return {
       testCaseId: testCase.id,
@@ -611,11 +600,10 @@ class SqlService {
       executionDuration: testCase.executionDuration,
       status: testCase.status,
       error: testCase.error,
-      latestResultSummary: summary,
       availableColumns,
       visibleColumns,
       diffPayload: filteredDiffPayload,
-      summary: filteredSummary,
+      summary,
       files: {
         runDir,
         summaryResultPath,
@@ -1367,6 +1355,8 @@ class SqlService {
   }
 
   private buildResultSummary(
+    oldRows: QueryRows,
+    newRows: QueryRows,
     differences: ResultDiffItem[],
     executionTime: string,
     metadata: {
@@ -1397,6 +1387,8 @@ class SqlService {
       onlyInNewCount,
       changedCount,
       matched: differences.length === 0,
+      oldCount: oldRows.length,
+      newCount: newRows.length,
     };
   }
 
