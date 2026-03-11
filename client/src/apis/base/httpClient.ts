@@ -32,9 +32,14 @@ function toErrorMessage(error: AxiosError): string {
   return error.message || 'API request failed';
 }
 
+const API_TIMEOUT_MS = Number.parseInt(
+  import.meta.env.VITE_API_TIMEOUT_MS ?? '120000',
+  10
+);
+
 export const httpClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 15000,
+  timeout: Number.isFinite(API_TIMEOUT_MS) ? API_TIMEOUT_MS : 120000,
   headers: {
     'Content-Type': 'application/json',
   },
