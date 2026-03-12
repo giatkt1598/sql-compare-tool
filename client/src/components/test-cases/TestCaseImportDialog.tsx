@@ -119,7 +119,7 @@ export default function TestCaseImportDialog({
 
     const headerRow = worksheet.getRow(1);
     headerRow.height = 22;
-    headerRow.eachCell((cell, colNumber) => {
+    headerRow.eachCell((cell: any, colNumber: number) => {
       const headerLabel = headers[colNumber - 1] ?? '';
       const isFixed = FIXED_COLUMN_SET.has(headerLabel.toLowerCase());
       cell.font = { bold: true };
@@ -182,7 +182,7 @@ export default function TestCaseImportDialog({
       }
 
       const rows: ParsedRow[] = [];
-      worksheet.eachRow((row, rowNumber) => {
+      worksheet.eachRow((row: any, rowNumber: number) => {
         if (rowNumber === 1) {
           return;
         }
