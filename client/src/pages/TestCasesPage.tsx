@@ -38,7 +38,7 @@ import {
   Typography,
 } from '@mui/material';
 import { type ChangeEvent, useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { profileApi } from '../apis/profileApi';
 import { sqlApi } from '../apis/sqlApi';
 import { sqlParameterApi } from '../apis/sqlParameterApi';
@@ -105,10 +105,31 @@ function TestCasesPage() {
     runInParallel: 'no',
     maxConcurrency: '8',
   });
-  const [sortField, setSortField] = useState<SortField>('name');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialSortFieldParam = searchParams.get('sortField') ?? 'name';
+  const initialSortDirectionParam = searchParams.get('sortDirection') ?? 'asc';
+  const initialSortField: SortField = [
+    'name',
+    'executionDuration',
+    'executionTime',
+    'parallelExecution',
+    'status',
+    'enabled',
+  ].includes(initialSortFieldParam)
+    ? (initialSortFieldParam as SortField)
+    : 'name';
+  const initialSortDirection: SortDirection =
+    initialSortDirectionParam === 'desc' ? 'desc' : 'asc';
+  const [sortField, setSortField] = useState<SortField>(initialSortField);
+  const [sortDirection, setSortDirection] = useState<SortDirection>(initialSortDirection);
+  const initialPageParam = Number.parseInt(searchParams.get('page') ?? '1', 10);
+  const initialRowsParam = Number.parseInt(searchParams.get('pageSize') ?? '10', 10);
+  const [page, setPage] = useState(
+    Number.isFinite(initialPageParam) && initialPageParam > 0 ? initialPageParam - 1 : 0
+  );
+  const [rowsPerPage, setRowsPerPage] = useState(
+    Number.isFinite(initialRowsParam) && initialRowsParam > 0 ? initialRowsParam : 10
+  );
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 
   useEffect(() => {
@@ -187,6 +208,39 @@ function TestCasesPage() {
       eventSource.close();
     };
   }, [profileId]);
+
+  useEffect(() => {
+    const nextParams = new URLSearchParams(searchParams);
+    const pageValue = String(page + 1);
+    const rowsValue = String(rowsPerPage);
+    const sortFieldValue = sortField;
+    const sortDirectionValue = sortDirection;
+    let didChange = false;
+
+    if (nextParams.get('page') !== pageValue) {
+      nextParams.set('page', pageValue);
+      didChange = true;
+    }
+
+    if (nextParams.get('pageSize') !== rowsValue) {
+      nextParams.set('pageSize', rowsValue);
+      didChange = true;
+    }
+
+    if (nextParams.get('sortField') !== sortFieldValue) {
+      nextParams.set('sortField', sortFieldValue);
+      didChange = true;
+    }
+
+    if (nextParams.get('sortDirection') !== sortDirectionValue) {
+      nextParams.set('sortDirection', sortDirectionValue);
+      didChange = true;
+    }
+
+    if (didChange) {
+      setSearchParams(nextParams, { replace: true });
+    }
+  }, [page, rowsPerPage, sortField, sortDirection, searchParams, setSearchParams]);
 
   const fetchItems = async (profileId: string) => {
     setIsLoading(true);
