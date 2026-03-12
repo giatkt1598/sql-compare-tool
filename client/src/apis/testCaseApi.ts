@@ -30,6 +30,30 @@ class TestCaseApi extends ApiService {
   remove(id: string) {
     return this.delete<{ message: string; id: string }>(id);
   }
+
+  previewImport(profileId: string, names: string[]) {
+    return this.post<{ existingNames: string[] }>(`/import/preview`, {
+      profileId,
+      names,
+    });
+  }
+
+  importFromExcel(
+    profileId: string,
+    rows: Array<{
+      name: string;
+      compareInOrder: boolean;
+      parallelExecution: boolean;
+      enabled: boolean;
+      expectedExecutionDuration: number | null;
+      parameter: Record<string, unknown>;
+    }>
+  ) {
+    return this.post<{ created: number; updated: number }>(`/import`, {
+      profileId,
+      rows,
+    });
+  }
 }
 
 export const testCaseApi = new TestCaseApi();

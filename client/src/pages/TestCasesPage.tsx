@@ -4,6 +4,7 @@ import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import PlayArrowOutlinedIcon from '@mui/icons-material/PlayArrowOutlined';
 import TuneOutlinedIcon from '@mui/icons-material/TuneOutlined';
+import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import {
@@ -40,9 +41,12 @@ import { type ChangeEvent, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { profileApi } from '../apis/profileApi';
 import { sqlApi } from '../apis/sqlApi';
+import { sqlParameterApi } from '../apis/sqlParameterApi';
 import { testCaseApi } from '../apis/testCaseApi';
 import DbBreadcrumbSubtitle from '../components/common/DbBreadcrumbSubtitle';
+import TestCaseImportDialog from '../components/test-cases/TestCaseImportDialog';
 import type { Profile } from '../models/profile';
+import type { SqlParameter } from '../models/sqlParameter';
 import type { TestCase } from '../models/testCase';
 
 dayjs.extend(relativeTime);
@@ -84,6 +88,7 @@ function TestCasesPage() {
   const { profileId } = useParams<{ profileId: string }>();
   const [items, setItems] = useState<TestCase[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [sqlParameters, setSqlParameters] = useState<SqlParameter[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastState>({
@@ -104,6 +109,7 @@ function TestCasesPage() {
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!profileId) {
@@ -112,9 +118,14 @@ function TestCasesPage() {
       return;
     }
 
-    void Promise.all([fetchItems(profileId), profileApi.getById(profileId)])
-      .then(([, nextProfile]) => {
+    void Promise.all([
+      fetchItems(profileId),
+      profileApi.getById(profileId),
+      sqlParameterApi.getByProfileId(profileId),
+    ])
+      .then(([, nextProfile, nextSqlParameters]) => {
         setProfile(nextProfile);
+        setSqlParameters(nextSqlParameters);
       })
       .catch((fetchError) => {
         setError(fetchError instanceof Error ? fetchError.message : 'Load test cases failed');
@@ -517,6 +528,13 @@ function TestCasesPage() {
             Edit SQL Parameters
           </Button>
           <Button
+            variant="contained"
+            startIcon={<UploadFileOutlinedIcon />}
+            onClick={() => setIsImportDialogOpen(true)}
+          >
+            Import Excel
+          </Button>
+          <Button
             startIcon={<AddCircleOutlineOutlinedIcon />}
             variant="contained"
             onClick={() => navigate(`/profiles/${profileId}/test-cases/new`)}
@@ -861,6 +879,19 @@ function TestCasesPage() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <TestCaseImportDialog
+        open={isImportDialogOpen}
+        profileId={profileId}
+        sqlParameters={sqlParameters}
+        onClose={() => setIsImportDialogOpen(false)}
+        onImported={() => {
+          if (profileId) {
+            void fetchItems(profileId);
+          }
+          showToast('Import completed', 'success');
+        }}
+      />
 
       <Snackbar
         open={toast.open}

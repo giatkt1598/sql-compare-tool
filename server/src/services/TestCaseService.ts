@@ -114,6 +114,96 @@ class TestCaseService {
     return { message: 'TestCase deleted successfully', id };
   }
 
+  previewImport(profileId: string, names: string[]) {
+    const profile = ProfileRepository.getById(profileId);
+    if (!profile) {
+      throw new Error(`Profile with ID ${profileId} not found`);
+    }
+
+    const existing = TestCaseRepository.getByProfileId(profileId);
+    const normalizedNames = names
+      .map((name) => String(name ?? '').trim())
+      .filter((name) => name.length > 0);
+    const existingNames = normalizedNames.filter((name) =>
+      existing.some((testCase) => testCase.name === name)
+    );
+
+    return { existingNames };
+  }
+
+  importFromExcel(
+    profileId: string,
+    rows: Array<{
+      name?: string;
+      compareInOrder?: boolean;
+      parallelExecution?: boolean;
+      enabled?: boolean;
+      expectedExecutionDuration?: number | null;
+      parameter?: Record<string, unknown>;
+    }>
+  ) {
+    const profile = ProfileRepository.getById(profileId);
+    if (!profile) {
+      throw new Error(`Profile with ID ${profileId} not found`);
+    }
+
+    const existing = TestCaseRepository.getByProfileId(profileId);
+    const existingByName = new Map(existing.map((item) => [item.name, item]));
+    let nextOrderIndex = 0;
+    let created = 0;
+    let updated = 0;
+
+    for (const row of rows) {
+      const name = String(row.name ?? '').trim();
+      if (!name) {
+        continue;
+      }
+
+      const parameterJson = JSON.stringify(row.parameter ?? {}, null, 2);
+      const basePayload = {
+        profileId,
+        orderIndex: nextOrderIndex,
+        name,
+        parameter: parameterJson,
+        compareInOrder: row.compareInOrder ?? false,
+        parallelExecution: row.parallelExecution ?? true,
+        expectedExecutionDuration:
+          row.expectedExecutionDuration === undefined ? null : row.expectedExecutionDuration,
+        enabled: row.enabled ?? true,
+        executionCount: 0,
+        status: null,
+        error: null,
+        executionDuration: null,
+        executionTime: null,
+      };
+
+      const existingTestCase = existingByName.get(name);
+      if (existingTestCase) {
+        TestCaseRepository.update(existingTestCase.id, {
+          ...basePayload,
+          autoRunWhenSqlChanges: existingTestCase.autoRunWhenSqlChanges,
+        });
+        updated += 1;
+
+        const testCaseResultsDir = path.join(FILE_PATHS.RESULTS, profileId, existingTestCase.id);
+        if (fs.existsSync(testCaseResultsDir)) {
+          fs.rmSync(testCaseResultsDir, { recursive: true, force: true });
+        }
+      } else {
+        TestCaseRepository.add({
+          ...basePayload,
+          autoRunWhenSqlChanges: false,
+        });
+        created += 1;
+      }
+
+      nextOrderIndex += 1;
+    }
+
+    TestCaseAutoRunService.syncByProfileId(profileId);
+    return { created, updated };
+  }
+
   private enrichWithLatestResultSummary(testCase: TestCase) {
     const latestResultSummary = this.getLatestResultSummary(
       testCase.profileId,

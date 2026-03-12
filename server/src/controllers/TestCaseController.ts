@@ -224,6 +224,61 @@ class TestCaseController {
       });
     }
   }
+
+  previewImport(req: Request, res: Response): void {
+    try {
+      const payload = req.body as { profileId?: string; names?: string[] };
+      const profileId = String(payload.profileId ?? '').trim();
+      const names = Array.isArray(payload.names) ? payload.names : [];
+
+      if (!profileId) {
+        res.status(400).json({ success: false, message: 'profileId is required' });
+        return;
+      }
+
+      const result = TestCaseService.previewImport(profileId, names);
+      res.status(200).json(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unexpected error';
+      res.status(400).json({
+        success: false,
+        message,
+      });
+    }
+  }
+
+  importFromExcel(req: Request, res: Response): void {
+    try {
+      const payload = req.body as {
+        profileId?: string;
+        rows?: Array<{
+          name?: string;
+          compareInOrder?: boolean;
+          parallelExecution?: boolean;
+          enabled?: boolean;
+          expectedExecutionDuration?: number | null;
+          parameter?: Record<string, unknown>;
+        }>;
+      };
+
+      const profileId = String(payload.profileId ?? '').trim();
+      const rows = Array.isArray(payload.rows) ? payload.rows : [];
+
+      if (!profileId) {
+        res.status(400).json({ success: false, message: 'profileId is required' });
+        return;
+      }
+
+      const result = TestCaseService.importFromExcel(profileId, rows);
+      res.status(200).json(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unexpected error';
+      res.status(400).json({
+        success: false,
+        message,
+      });
+    }
+  }
 }
 
 export default new TestCaseController();
