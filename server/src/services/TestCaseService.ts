@@ -118,6 +118,34 @@ class TestCaseService {
     return { message: 'TestCase deleted successfully', id };
   }
 
+  deleteMany(ids: string[]) {
+    const uniqueIds = Array.from(new Set(ids.map((id) => String(id).trim()).filter(Boolean)));
+    if (uniqueIds.length === 0) {
+      throw new Error('ids is required');
+    }
+
+    const deletedIds: string[] = [];
+    const errors: Array<{ id: string; message: string }> = [];
+
+    for (const id of uniqueIds) {
+      try {
+        this.delete(id);
+        deletedIds.push(id);
+      } catch (error) {
+        errors.push({
+          id,
+          message: error instanceof Error ? error.message : 'Unexpected error',
+        });
+      }
+    }
+
+    return {
+      message: 'Delete many completed',
+      deletedIds,
+      errors,
+    };
+  }
+
   previewImport(profileId: string, names: string[]) {
     const profile = ProfileRepository.getById(profileId);
     if (!profile) {

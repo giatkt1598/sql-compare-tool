@@ -112,6 +112,7 @@ router.get('/profile/:profileId/export', TestCaseController.exportReport.bind(Te
  */
 router.get('/', TestCaseController.getAll.bind(TestCaseController));
 router.post('/', TestCaseController.create.bind(TestCaseController));
+router.post('/delete-many', TestCaseController.deleteMany.bind(TestCaseController));
 router.post('/import/preview', TestCaseController.previewImport.bind(TestCaseController));
 router.post('/import', TestCaseController.importFromExcel.bind(TestCaseController));
 

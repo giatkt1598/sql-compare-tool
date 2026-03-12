@@ -225,6 +225,26 @@ class TestCaseController {
     }
   }
 
+  deleteMany(req: Request, res: Response): void {
+    try {
+      const payload = req.body as { ids?: string[] };
+      const ids = Array.isArray(payload.ids) ? payload.ids.filter(Boolean) : [];
+      if (ids.length === 0) {
+        res.status(400).json({ success: false, message: 'ids is required' });
+        return;
+      }
+
+      const result = TestCaseService.deleteMany(ids);
+      res.status(200).json(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unexpected error';
+      res.status(400).json({
+        success: false,
+        message,
+      });
+    }
+  }
+
   previewImport(req: Request, res: Response): void {
     try {
       const payload = req.body as { profileId?: string; names?: string[] };

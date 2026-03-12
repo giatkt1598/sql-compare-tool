@@ -310,9 +310,10 @@ function TestCasesPage() {
     }
 
     try {
-      await Promise.all(selectedIds.map((id) => testCaseApi.remove(id)));
+      const result = await testCaseApi.deleteMany(selectedIds);
       setItems((current) => {
-        const nextItems = current.filter((testCase) => !selectedIds.includes(testCase.id));
+        const deletedSet = new Set(result.deletedIds ?? selectedIds);
+        const nextItems = current.filter((testCase) => !deletedSet.has(testCase.id));
         const nextPageCount = Math.max(1, Math.ceil(nextItems.length / rowsPerPage));
         const nextPageIndex = Math.min(page, nextPageCount - 1);
         if (nextPageIndex !== page) {
@@ -322,7 +323,14 @@ function TestCasesPage() {
       });
       setSelectedIds([]);
       setIsAllSelected(false);
-      showToast('Selected test cases deleted', 'success');
+      if (result.errors && result.errors.length > 0) {
+        showToast(
+          `Deleted ${result.deletedIds.length} test case(s), ${result.errors.length} failed`,
+          'error'
+        );
+      } else {
+        showToast('Selected test cases deleted', 'success');
+      }
     } catch (deleteError) {
       showToast(
         deleteError instanceof Error ? deleteError.message : 'Delete selected test cases failed',

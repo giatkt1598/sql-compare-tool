@@ -31,6 +31,13 @@ class TestCaseApi extends ApiService {
     return this.delete<{ message: string; id: string }>(id);
   }
 
+  deleteMany(ids: string[]) {
+    return this.post<{ message: string; deletedIds: string[]; errors: Array<{ id: string; message: string }> }>(
+      '/delete-many',
+      { ids }
+    );
+  }
+
   previewImport(profileId: string, names: string[]) {
     return this.post<{ existingNames: string[] }>(`/import/preview`, {
       profileId,
