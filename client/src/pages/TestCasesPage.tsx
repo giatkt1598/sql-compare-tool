@@ -3,6 +3,7 @@ import ArrowBackOutlinedIcon from '@mui/icons-material/ArrowBackOutlined';
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import PlayArrowOutlinedIcon from '@mui/icons-material/PlayArrowOutlined';
+import PlaylistPlayOutlinedIcon from '@mui/icons-material/PlaylistPlayOutlined';
 import TuneOutlinedIcon from '@mui/icons-material/TuneOutlined';
 import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined';
 import dayjs from 'dayjs';
@@ -574,7 +575,7 @@ function TestCasesPage() {
             tailLabel="Test Cases"
           />
         </Stack>
-        <Stack direction="row" spacing={1.5}>
+        <Stack direction="row" spacing={1.5} alignItems="center">
           <Button
             startIcon={<ArrowBackOutlinedIcon />}
             variant="outlined"
@@ -582,38 +583,45 @@ function TestCasesPage() {
           >
             Back to Profiles
           </Button>
-          <Button
-            startIcon={<TuneOutlinedIcon />}
-            variant="outlined"
-            onClick={() => navigate(`/profiles/${profileId}/parameters`)}
-          >
-            Edit SQL Parameters
-          </Button>
-          <TestCaseExportButton
-            profileId={profileId}
-            onError={(message) => showToast(message, 'error')}
-            onSuccess={(message) => showToast(message, 'success')}
-          />
-          <Button
-            variant="contained"
-            startIcon={<UploadFileOutlinedIcon />}
-            onClick={() => setIsImportDialogOpen(true)}
-          >
-            Import Excel
-          </Button>
-          <Button
-            startIcon={<AddCircleOutlineOutlinedIcon />}
-            variant="contained"
-            onClick={() => navigate(`/profiles/${profileId}/test-cases/new`)}
-          >
-            New Test Case
-          </Button>
-          <Button
-            variant="contained"
-            onClick={() => setRunManyDialog((current) => ({ ...current, open: true }))}
-          >
-            Run Many Test Cases
-          </Button>
+          <Tooltip title="Edit SQL Parameters" placement="top">
+            <IconButton
+              color="primary"
+              onClick={() => navigate(`/profiles/${profileId}/parameters`)}
+            >
+              <TuneOutlinedIcon />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Export" placement="top">
+            <span>
+              <TestCaseExportButton
+                profileId={profileId}
+                onError={(message) => showToast(message, 'error')}
+                onSuccess={(message) => showToast(message, 'success')}
+                iconOnly
+              />
+            </span>
+          </Tooltip>
+          <Tooltip title="Import Excel" placement="top">
+            <IconButton color="primary" onClick={() => setIsImportDialogOpen(true)}>
+              <UploadFileOutlinedIcon />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="New Test Case" placement="top">
+            <IconButton
+              color="primary"
+              onClick={() => navigate(`/profiles/${profileId}/test-cases/new`)}
+            >
+              <AddCircleOutlineOutlinedIcon />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Run Many Test Cases" placement="top">
+            <IconButton
+              color="primary"
+              onClick={() => setRunManyDialog((current) => ({ ...current, open: true }))}
+            >
+              <PlaylistPlayOutlinedIcon />
+            </IconButton>
+          </Tooltip>
         </Stack>
       </Stack>
 
@@ -691,7 +699,7 @@ function TestCasesPage() {
                       Name
                     </TableSortLabel>
                   </TableCell>
-                  <TableCell width={180}>
+                  <TableCell width={140} padding="none">
                     <TableSortLabel
                       active={sortField === 'executionDuration'}
                       direction={sortField === 'executionDuration' ? sortDirection : 'asc'}
@@ -709,8 +717,8 @@ function TestCasesPage() {
                       Execute Time
                     </TableSortLabel>
                   </TableCell>
-                  <TableCell width={180}>Rows Count</TableCell>
-                  <TableCell width={170}>
+                  <TableCell width={160}>Rows Count</TableCell>
+                  <TableCell width={130} padding="none" align="center">
                     <TableSortLabel
                       active={sortField === 'parallelExecution'}
                       direction={sortField === 'parallelExecution' ? sortDirection : 'asc'}
@@ -719,7 +727,7 @@ function TestCasesPage() {
                       Execute Parallel
                     </TableSortLabel>
                   </TableCell>
-                  <TableCell width={120}>
+                  <TableCell width={100}>
                     <TableSortLabel
                       active={sortField === 'status'}
                       direction={sortField === 'status' ? sortDirection : 'asc'}
@@ -728,7 +736,7 @@ function TestCasesPage() {
                       Status
                     </TableSortLabel>
                   </TableCell>
-                  <TableCell width={50}>
+                  <TableCell width={50} padding={'none'}>
                     <TableSortLabel
                       active={sortField === 'enabled'}
                       direction={sortField === 'enabled' ? sortDirection : 'asc'}

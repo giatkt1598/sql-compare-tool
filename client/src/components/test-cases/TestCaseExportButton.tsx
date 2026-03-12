@@ -1,5 +1,5 @@
 import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined';
-import { Button } from '@mui/material';
+import { Button, IconButton } from '@mui/material';
 import { useState } from 'react';
 import { testCaseApi } from '../../apis/testCaseApi';
 
@@ -7,6 +7,7 @@ interface TestCaseExportButtonProps {
   profileId: string;
   onError?: (message: string) => void;
   onSuccess?: (message: string) => void;
+  iconOnly?: boolean;
 }
 
 const fallbackFileName = (profileId: string) =>
@@ -29,7 +30,12 @@ function getFileNameFromHeaders(headers: Record<string, string | string[] | unde
   return null;
 }
 
-function TestCaseExportButton({ profileId, onError, onSuccess }: TestCaseExportButtonProps) {
+function TestCaseExportButton({
+  profileId,
+  onError,
+  onSuccess,
+  iconOnly = false,
+}: TestCaseExportButtonProps) {
   const [isExporting, setIsExporting] = useState(false);
 
   const handleExport = async () => {
@@ -60,6 +66,14 @@ function TestCaseExportButton({ profileId, onError, onSuccess }: TestCaseExportB
       setIsExporting(false);
     }
   };
+
+  if (iconOnly) {
+    return (
+      <IconButton color="primary" onClick={() => void handleExport()} disabled={isExporting}>
+        <FileDownloadOutlinedIcon />
+      </IconButton>
+    );
+  }
 
   return (
     <Button
