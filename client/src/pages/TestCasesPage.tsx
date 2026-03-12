@@ -270,7 +270,15 @@ function TestCasesPage() {
 
     try {
       await testCaseApi.remove(item.id);
-      setItems((current) => current.filter((testCase) => testCase.id !== item.id));
+      setItems((current) => {
+        const nextItems = current.filter((testCase) => testCase.id !== item.id);
+        const nextPageCount = Math.max(1, Math.ceil(nextItems.length / rowsPerPage));
+        const nextPageIndex = Math.min(page, nextPageCount - 1);
+        if (nextPageIndex !== page) {
+          setPage(nextPageIndex);
+        }
+        return nextItems;
+      });
       showToast('Test case deleted successfully', 'success');
     } catch (deleteError) {
       showToast(
