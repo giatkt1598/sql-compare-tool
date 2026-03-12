@@ -4,6 +4,7 @@ import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import PlayArrowOutlinedIcon from '@mui/icons-material/PlayArrowOutlined';
 import PlaylistPlayOutlinedIcon from '@mui/icons-material/PlaylistPlayOutlined';
+import SelectAllOutlinedIcon from '@mui/icons-material/SelectAllOutlined';
 import TuneOutlinedIcon from '@mui/icons-material/TuneOutlined';
 import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined';
 import dayjs from 'dayjs';
@@ -132,6 +133,8 @@ function TestCasesPage() {
     Number.isFinite(initialRowsParam) && initialRowsParam > 0 ? initialRowsParam : 10
   );
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isAllSelected, setIsAllSelected] = useState(false);
 
   useEffect(() => {
     if (!profileId) {
@@ -243,6 +246,14 @@ function TestCasesPage() {
     }
   }, [page, rowsPerPage, sortField, sortDirection, searchParams, setSearchParams]);
 
+  useEffect(() => {
+    if (!isAllSelected) {
+      return;
+    }
+
+    setSelectedIds(items.map((item) => item.id));
+  }, [isAllSelected, items]);
+
   const fetchItems = async (profileId: string) => {
     setIsLoading(true);
     setError(null);
@@ -284,6 +295,37 @@ function TestCasesPage() {
     } catch (deleteError) {
       showToast(
         deleteError instanceof Error ? deleteError.message : 'Delete test case failed',
+        'error'
+      );
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedIds.length === 0) {
+      return;
+    }
+
+    if (!window.confirm(`Delete ${selectedIds.length} selected test case(s)?`)) {
+      return;
+    }
+
+    try {
+      await Promise.all(selectedIds.map((id) => testCaseApi.remove(id)));
+      setItems((current) => {
+        const nextItems = current.filter((testCase) => !selectedIds.includes(testCase.id));
+        const nextPageCount = Math.max(1, Math.ceil(nextItems.length / rowsPerPage));
+        const nextPageIndex = Math.min(page, nextPageCount - 1);
+        if (nextPageIndex !== page) {
+          setPage(nextPageIndex);
+        }
+        return nextItems;
+      });
+      setSelectedIds([]);
+      setIsAllSelected(false);
+      showToast('Selected test cases deleted', 'success');
+    } catch (deleteError) {
+      showToast(
+        deleteError instanceof Error ? deleteError.message : 'Delete selected test cases failed',
         'error'
       );
     }
@@ -555,9 +597,31 @@ function TestCasesPage() {
     return sortedItems.slice(start, start + rowsPerPage);
   }, [page, rowsPerPage, sortedItems]);
 
+  const allSelectedAcrossPages = items.length > 0 && selectedIds.length === items.length;
+  const someSelectedAcrossPages = selectedIds.length > 0 && !allSelectedAcrossPages;
+
   if (!profileId) {
     return <Alert severity="error">profileId is required</Alert>;
   }
+
+  const CheckBoxAll = () => (
+    <Checkbox
+      checked={allSelectedAcrossPages}
+      indeterminate={someSelectedAcrossPages}
+      onChange={(event) => {
+        if (event.target.checked) {
+          setSelectedIds(items.map((item) => item.id));
+          setIsAllSelected(true);
+        } else {
+          setSelectedIds([]);
+          setIsAllSelected(false);
+        }
+      }}
+      slotProps={{
+        input: { 'aria-label': 'select all test cases' },
+      }}
+    />
+  );
 
   return (
     <Stack spacing={3}>
@@ -686,176 +750,235 @@ function TestCasesPage() {
             </Paper>
           </Stack>
 
-          <TableContainer component={Paper}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>
-                    <TableSortLabel
-                      active={sortField === 'name'}
-                      direction={sortField === 'name' ? sortDirection : 'asc'}
-                      onClick={() => handleSort('name')}
+          <Paper sx={{ position: 'relative' }}>
+            {selectedIds.length > 0 && (
+              <Stack
+                direction="row"
+                alignItems="center"
+                justifyContent="space-between"
+                sx={{
+                  px: 2,
+                  py: 1,
+                  borderBottom: '1px solid',
+                  borderColor: 'divider',
+                  bgcolor: '#C8FAD6',
+                  color: '#00A76F',
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  zIndex: 10,
+                  borderTopLeftRadius: 12,
+                  paddingLeft: 0.5,
+                }}
+              >
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <CheckBoxAll />
+                  <Typography variant="subtitle2">{selectedIds.length} selected</Typography>
+                </Stack>
+                <Tooltip title="Delete" placement="top">
+                  <IconButton color="primary" onClick={() => void handleDeleteSelected()}>
+                    <DeleteOutlineOutlinedIcon />
+                  </IconButton>
+                </Tooltip>
+              </Stack>
+            )}
+            <TableContainer sx={{ maxHeight: 'calc(100vh - 380px)' }}>
+              <Table stickyHeader>
+                <TableHead>
+                  <TableRow>
+                    <TableCell padding="checkbox">
+                      <CheckBoxAll />
+                    </TableCell>
+                    <TableCell>
+                      <TableSortLabel
+                        active={sortField === 'name'}
+                        direction={sortField === 'name' ? sortDirection : 'asc'}
+                        onClick={() => handleSort('name')}
+                      >
+                        Name
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell width={140} padding="none">
+                      <TableSortLabel
+                        active={sortField === 'executionDuration'}
+                        direction={sortField === 'executionDuration' ? sortDirection : 'asc'}
+                        onClick={() => handleSort('executionDuration')}
+                      >
+                        Execute Duration
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell width={160}>
+                      <TableSortLabel
+                        active={sortField === 'executionTime'}
+                        direction={sortField === 'executionTime' ? sortDirection : 'asc'}
+                        onClick={() => handleSort('executionTime')}
+                      >
+                        Execute Time
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell width={160}>Rows Count</TableCell>
+                    <TableCell width={130} padding="none" align="center">
+                      <TableSortLabel
+                        active={sortField === 'parallelExecution'}
+                        direction={sortField === 'parallelExecution' ? sortDirection : 'asc'}
+                        onClick={() => handleSort('parallelExecution')}
+                      >
+                        Execute Parallel
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell width={100}>
+                      <TableSortLabel
+                        active={sortField === 'status'}
+                        direction={sortField === 'status' ? sortDirection : 'asc'}
+                        onClick={() => handleSort('status')}
+                      >
+                        Status
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell width={50} padding={'none'}>
+                      <TableSortLabel
+                        active={sortField === 'enabled'}
+                        direction={sortField === 'enabled' ? sortDirection : 'asc'}
+                        onClick={() => handleSort('enabled')}
+                      >
+                        Enabled
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell width={160} align="right">
+                      Actions
+                    </TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {paginatedItems.map((item) => (
+                    <Tooltip
+                      key={item.id}
+                      arrow
+                      placement="top-start"
+                      title={
+                        <Stack spacing={0.5}>
+                          <Typography variant="caption" sx={{ fontWeight: 700 }}>
+                            SQL Parameters
+                          </Typography>
+                          <Typography
+                            component="pre"
+                            sx={{
+                              m: 0,
+                              whiteSpace: 'pre-wrap',
+                              fontFamily: 'monospace',
+                              fontSize: 12,
+                              maxWidth: 520,
+                            }}
+                          >
+                            {item.parameter || '{}'}
+                          </Typography>
+                        </Stack>
+                      }
                     >
-                      Name
-                    </TableSortLabel>
-                  </TableCell>
-                  <TableCell width={140} padding="none">
-                    <TableSortLabel
-                      active={sortField === 'executionDuration'}
-                      direction={sortField === 'executionDuration' ? sortDirection : 'asc'}
-                      onClick={() => handleSort('executionDuration')}
-                    >
-                      Execute Duration
-                    </TableSortLabel>
-                  </TableCell>
-                  <TableCell width={160}>
-                    <TableSortLabel
-                      active={sortField === 'executionTime'}
-                      direction={sortField === 'executionTime' ? sortDirection : 'asc'}
-                      onClick={() => handleSort('executionTime')}
-                    >
-                      Execute Time
-                    </TableSortLabel>
-                  </TableCell>
-                  <TableCell width={160}>Rows Count</TableCell>
-                  <TableCell width={130} padding="none" align="center">
-                    <TableSortLabel
-                      active={sortField === 'parallelExecution'}
-                      direction={sortField === 'parallelExecution' ? sortDirection : 'asc'}
-                      onClick={() => handleSort('parallelExecution')}
-                    >
-                      Execute Parallel
-                    </TableSortLabel>
-                  </TableCell>
-                  <TableCell width={100}>
-                    <TableSortLabel
-                      active={sortField === 'status'}
-                      direction={sortField === 'status' ? sortDirection : 'asc'}
-                      onClick={() => handleSort('status')}
-                    >
-                      Status
-                    </TableSortLabel>
-                  </TableCell>
-                  <TableCell width={50} padding={'none'}>
-                    <TableSortLabel
-                      active={sortField === 'enabled'}
-                      direction={sortField === 'enabled' ? sortDirection : 'asc'}
-                      onClick={() => handleSort('enabled')}
-                    >
-                      Enabled
-                    </TableSortLabel>
-                  </TableCell>
-                  <TableCell width={160} align="right">
-                    Actions
-                  </TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {paginatedItems.map((item) => (
-                  <Tooltip
-                    key={item.id}
-                    arrow
-                    placement="top-start"
-                    title={
-                      <Stack spacing={0.5}>
-                        <Typography variant="caption" sx={{ fontWeight: 700 }}>
-                          SQL Parameters
-                        </Typography>
-                        <Typography
-                          component="pre"
-                          sx={{
-                            m: 0,
-                            whiteSpace: 'pre-wrap',
-                            fontFamily: 'monospace',
-                            fontSize: 12,
-                            maxWidth: 520,
-                          }}
-                        >
-                          {item.parameter || '{}'}
-                        </Typography>
-                      </Stack>
-                    }
-                  >
-                    <TableRow hover sx={{ cursor: 'pointer' }} onClick={() => handleRowClick(item)}>
-                      <TableCell>{item.name}</TableCell>
-                      <TableCell>{renderExecutionDurationCell(item)}</TableCell>
-                      <TableCell>
-                        {item.executionTime ? (
-                          <Stack spacing={0.25}>
-                            <Typography variant="body2">
-                              {new Date(item.executionTime).toLocaleString()}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {dayjs(item.executionTime).fromNow()}
-                            </Typography>
-                          </Stack>
-                        ) : (
-                          '-'
-                        )}
-                      </TableCell>
-                      <TableCell>{renderRowsCountCell(item)}</TableCell>
+                      <TableRow
+                        hover
+                        sx={{ cursor: 'pointer' }}
+                        onClick={() => handleRowClick(item)}
+                      >
+                        <TableCell padding="checkbox" onClick={(event) => event.stopPropagation()}>
+                          <Checkbox
+                            checked={selectedIds.includes(item.id)}
+                            onChange={(event) => {
+                              if (event.target.checked) {
+                                setSelectedIds((current) =>
+                                  current.includes(item.id) ? current : [...current, item.id]
+                                );
+                                setIsAllSelected(false);
+                              } else {
+                                setSelectedIds((current) => current.filter((id) => id !== item.id));
+                                setIsAllSelected(false);
+                              }
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell>{item.name}</TableCell>
+                        <TableCell>{renderExecutionDurationCell(item)}</TableCell>
+                        <TableCell>
+                          {item.executionTime ? (
+                            <Stack spacing={0.25}>
+                              <Typography variant="body2">
+                                {new Date(item.executionTime).toLocaleString()}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {dayjs(item.executionTime).fromNow()}
+                              </Typography>
+                            </Stack>
+                          ) : (
+                            '-'
+                          )}
+                        </TableCell>
+                        <TableCell>{renderRowsCountCell(item)}</TableCell>
 
-                      <TableCell>
-                        <Checkbox
-                          checked={item.parallelExecution}
-                          disabled={updatingTestCaseIds.includes(item.id)}
-                          onClick={(event) => event.stopPropagation()}
-                          onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                            void handleToggleParallelExecution(item, event.target.checked)
-                          }
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell>{renderStatusCell(item)}</TableCell>
-                      <TableCell onClick={(event) => event.stopPropagation()}>
-                        <Switch
-                          checked={item.enabled}
-                          disabled={updatingTestCaseIds.includes(item.id)}
-                          onChange={(event) => void handleToggleEnabled(item, event.target.checked)}
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell align="right">
-                        <Tooltip title="Run">
-                          <IconButton
-                            color="primary"
-                            disabled={runningTestCaseId === item.id}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              void handleRunTestCase(item);
-                            }}
-                          >
-                            <PlayArrowOutlinedIcon />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Edit">
-                          <IconButton
-                            color="default"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              navigate(`/profiles/${profileId}/test-cases/${item.id}/edit`);
-                            }}
-                          >
-                            <EditOutlinedIcon />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Delete">
-                          <IconButton
-                            color="error"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              void handleDelete(item);
-                            }}
-                          >
-                            <DeleteOutlineOutlinedIcon />
-                          </IconButton>
-                        </Tooltip>
-                      </TableCell>
-                    </TableRow>
-                  </Tooltip>
-                ))}
-              </TableBody>
-            </Table>
+                        <TableCell>
+                          <Checkbox
+                            checked={item.parallelExecution}
+                            disabled={updatingTestCaseIds.includes(item.id)}
+                            onClick={(event) => event.stopPropagation()}
+                            onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                              void handleToggleParallelExecution(item, event.target.checked)
+                            }
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell>{renderStatusCell(item)}</TableCell>
+                        <TableCell onClick={(event) => event.stopPropagation()}>
+                          <Switch
+                            checked={item.enabled}
+                            disabled={updatingTestCaseIds.includes(item.id)}
+                            onChange={(event) =>
+                              void handleToggleEnabled(item, event.target.checked)
+                            }
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell align="right">
+                          <Tooltip title="Run">
+                            <IconButton
+                              color="primary"
+                              disabled={runningTestCaseId === item.id}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                void handleRunTestCase(item);
+                              }}
+                            >
+                              <PlayArrowOutlinedIcon />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Edit">
+                            <IconButton
+                              color="default"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                navigate(`/profiles/${profileId}/test-cases/${item.id}/edit`);
+                              }}
+                            >
+                              <EditOutlinedIcon />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Delete">
+                            <IconButton
+                              color="error"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                void handleDelete(item);
+                              }}
+                            >
+                              <DeleteOutlineOutlinedIcon />
+                            </IconButton>
+                          </Tooltip>
+                        </TableCell>
+                      </TableRow>
+                    </Tooltip>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
             <TablePagination
               component="div"
               count={sortedItems.length}
@@ -868,7 +991,7 @@ function TestCasesPage() {
               }}
               rowsPerPageOptions={[10, 25, 50, 100]}
             />
-          </TableContainer>
+          </Paper>
         </Stack>
       )}
 
