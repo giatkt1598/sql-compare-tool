@@ -59,7 +59,7 @@ export abstract class ApiService {
     return httpClient.request<T>(config);
   }
 
-  private buildUrl(path: string): string {
+  protected buildUrl(path: string): string {
     if (!path) {
       return this.resourcePath;
     }

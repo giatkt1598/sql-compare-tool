@@ -279,6 +279,29 @@ class TestCaseController {
       });
     }
   }
+
+  async exportReport(req: Request, res: Response): Promise<void> {
+    try {
+      const profileId = String(req.params.profileId ?? '').trim();
+      if (!profileId) {
+        res.status(400).json({ success: false, message: 'profileId is required' });
+        return;
+      }
+
+      const { fileName, buffer } = await TestCaseService.exportReport(profileId);
+      res.setHeader('Content-Type', 'application/zip');
+      res.setHeader('X-Report-File-Name', fileName);
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+      res.status(200).send(buffer);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unexpected error';
+      const statusCode = message.includes('not found') ? 404 : 400;
+      res.status(statusCode).json({
+        success: false,
+        message,
+      });
+    }
+  }
 }
 
 export default new TestCaseController();

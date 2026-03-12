@@ -1,5 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import ExcelJS from 'exceljs';
+import AdmZip from 'adm-zip';
 import { FILE_PATHS } from '../config/fileConstants';
 import ProfileRepository from '../repositories/ProfileRepository';
 import TestCaseRepository from '../repositories/TestCaseRepository';
@@ -25,7 +27,9 @@ interface LatestResultSummary {
 
 class TestCaseService {
   getAll() {
-    return TestCaseRepository.getAll().map((testCase) => this.enrichWithLatestResultSummary(testCase));
+    return TestCaseRepository.getAll().map((testCase) =>
+      this.enrichWithLatestResultSummary(testCase)
+    );
   }
 
   getById(id: string) {
@@ -204,6 +208,165 @@ class TestCaseService {
     return { created, updated };
   }
 
+  async exportReport(profileId: string): Promise<{ fileName: string; buffer: Buffer }> {
+    const profile = ProfileRepository.getById(profileId);
+    if (!profile) {
+      throw new Error(`Profile with ID ${profileId} not found`);
+    }
+
+    const testCases = this.getByProfileId(profileId);
+    const stats = this.buildSummaryStats(testCases);
+    const oldSqlContent = this.resolveSqlContent(profile.oldSqlContent, profile.oldSqlFilePath);
+    const newSqlContent = this.resolveSqlContent(profile.newSqlContent, profile.newSqlFilePath);
+
+    const workbook = new ExcelJS.Workbook();
+    const summarySheet = workbook.addWorksheet('Summary');
+    summarySheet.columns = [
+      { key: 'field', width: 32 },
+      { key: 'value', width: 120 },
+    ];
+
+    summarySheet.addRow(['Test Case Summary Report']);
+    summarySheet.mergeCells('A1:B1');
+    const summaryTitleCell = summarySheet.getCell('A1');
+    summaryTitleCell.font = { bold: true, size: 14, color: { argb: 'FFFFFFFF' } };
+    summaryTitleCell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF2D3748' },
+    };
+    summaryTitleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    summarySheet.getRow(1).height = 24;
+
+    summarySheet.addRows([
+      { field: 'Profile Name', value: profile.name },
+      { field: 'Profile ID', value: profile.id },
+      { field: 'SQL Provider', value: profile.sqlProvider },
+      { field: 'Old SQL File Path', value: profile.oldSqlFilePath || 'Inline SQL' },
+      { field: 'New SQL File Path', value: profile.newSqlFilePath || 'Inline SQL' },
+      { field: 'Old SQL Content', value: oldSqlContent || '' },
+      { field: 'New SQL Content', value: newSqlContent || '' },
+      { field: 'Total Test Cases', value: stats.total },
+      { field: 'Total Success', value: stats.totalSuccess },
+      { field: 'Total Failed', value: stats.totalFailed },
+      { field: 'Total Error', value: stats.totalError },
+      { field: 'Total Running', value: stats.totalRunning },
+      {
+        field: 'Average Execution Duration (ms)',
+        value: stats.avgDuration !== null ? stats.avgDuration : '',
+      },
+      { field: 'Exported At', value: new Date().toISOString() },
+    ]);
+
+    summarySheet.getColumn('value').alignment = { wrapText: true, vertical: 'top' };
+
+    for (let rowIndex = 1; rowIndex <= summarySheet.rowCount; rowIndex += 1) {
+      const row = summarySheet.getRow(rowIndex);
+      const label = String(row.getCell(1).value ?? '');
+      if (label.startsWith('Total ') || label === 'Average Execution Duration (ms)') {
+        for (let cellIndex = 1; cellIndex <= row.cellCount; cellIndex += 1) {
+          row.getCell(cellIndex).alignment = {
+            ...row.getCell(cellIndex).alignment,
+            horizontal: 'left',
+          };
+        }
+      }
+    }
+
+    this.applyTableBorders(summarySheet, 2, summarySheet.rowCount, 1, 2);
+
+    const testCaseSheet = workbook.addWorksheet('Test Cases');
+    testCaseSheet.addRow(['Test Case Details']);
+    const testCaseTitleCell = testCaseSheet.getCell('A1');
+    testCaseTitleCell.font = { bold: true, size: 14, color: { argb: 'FFFFFFFF' } };
+    testCaseTitleCell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF2D3748' },
+    };
+    testCaseTitleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    testCaseSheet.getRow(1).height = 24;
+
+    const parameterKeys = this.collectParameterKeys(testCases);
+    const columns = [
+      { header: 'Name', key: 'name', width: 36 },
+      { header: 'Execution Duration (ms)', key: 'duration', width: 24 },
+      { header: 'Row Count (Old)', key: 'oldCount', width: 18 },
+      { header: 'Row Count (New)', key: 'newCount', width: 18 },
+      ...parameterKeys.map((key) => ({ header: key, key, width: 20 })),
+      { header: 'Status', key: 'status', width: 16 },
+    ];
+    const headerRowIndex = testCaseSheet.rowCount + 1;
+    testCaseSheet.addRow(columns.map((col) => col.header));
+    testCaseSheet.columns = columns.map(({ header: _header, ...rest }) => rest);
+    testCaseSheet.mergeCells(1, 1, 1, columns.length);
+
+    const headerRow = testCaseSheet.getRow(headerRowIndex);
+    headerRow.font = { bold: true, color: { argb: 'FF1F2937' } };
+    headerRow.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+    headerRow.height = 20;
+
+    headerRow.eachCell((cell, colNumber) => {
+      const isFixedColumn = colNumber <= 4 || colNumber === columns.length;
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: isFixedColumn ? 'FFE5E7EB' : 'FFD1FAE5' },
+      };
+    });
+
+    for (const testCase of testCases) {
+      const parameterValues = this.parseParameterValues(testCase.parameter ?? '');
+      const rowValues: Record<string, unknown> = {
+        name: testCase.name,
+        duration: testCase.executionDuration ?? '',
+        oldCount: testCase.latestResultSummary?.oldCount ?? '',
+        newCount: testCase.latestResultSummary?.newCount ?? '',
+        status: testCase.status ?? '',
+      };
+
+      for (const key of parameterKeys) {
+        rowValues[key] = parameterValues[key] ?? '';
+      }
+
+      const addedRow = testCaseSheet.addRow(rowValues);
+      const statusCell = addedRow.getCell(columns.length);
+      statusCell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: this.getStatusFillColor(testCase.status) },
+      };
+      statusCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    }
+
+    this.applyTableBorders(
+      testCaseSheet,
+      headerRowIndex,
+      testCaseSheet.rowCount,
+      1,
+      columns.length
+    );
+
+    const reportBaseName = this.buildReportBaseName(profile.name);
+    const excelFileName = `${reportBaseName}.xlsx`;
+    const excelBuffer = await workbook.xlsx.writeBuffer();
+    const zip = new AdmZip();
+    zip.addFile(
+      excelFileName,
+      Buffer.isBuffer(excelBuffer) ? excelBuffer : Buffer.from(excelBuffer)
+    );
+
+    const resultsDir = path.join(FILE_PATHS.RESULTS, profile.id);
+    if (fs.existsSync(resultsDir)) {
+      this.addArtifactsToZip(zip, resultsDir);
+    }
+
+    return {
+      fileName: `${reportBaseName}.zip`,
+      buffer: zip.toBuffer(),
+    };
+  }
+
   private enrichWithLatestResultSummary(testCase: TestCase) {
     const latestResultSummary = this.getLatestResultSummary(
       testCase.profileId,
@@ -215,6 +378,231 @@ class TestCaseService {
       ...testCase.toJSON(),
       latestResultSummary,
     };
+  }
+
+  private resolveSqlContent(inlineContent?: string, filePath?: string): string {
+    if (inlineContent && inlineContent.trim()) {
+      return inlineContent;
+    }
+
+    if (!filePath) {
+      return '';
+    }
+
+    try {
+      if (fs.existsSync(filePath)) {
+        return fs.readFileSync(filePath, 'utf8');
+      }
+    } catch {
+      return '';
+    }
+
+    return '';
+  }
+
+  private collectParameterKeys(testCases: Array<{ parameter?: string | null }>): string[] {
+    const keys = new Set<string>();
+    for (const testCase of testCases) {
+      const values = this.parseParameterValues(testCase.parameter ?? '');
+      Object.keys(values).forEach((key) => keys.add(key));
+    }
+    return Array.from(keys);
+  }
+
+  private parseParameterValues(parameter: string): Record<string, unknown> {
+    if (!parameter || !parameter.trim()) {
+      return {};
+    }
+
+    try {
+      const parsed = JSON.parse(parameter) as Record<string, unknown>;
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        return parsed;
+      }
+      return {};
+    } catch {
+      return {};
+    }
+  }
+
+  private getStatusFillColor(status?: string | null): string {
+    if (status === 'success') {
+      return 'FFC6F6D5';
+    }
+    if (status === 'failed' || status === 'error') {
+      return 'FFFEE2E2';
+    }
+    if (status === 'running') {
+      return 'FFDBEAFE';
+    }
+    return 'FFE5E7EB';
+  }
+
+  private applyTableBorders(
+    sheet: ExcelJS.Worksheet,
+    startRow: number,
+    endRow: number,
+    startCol: number,
+    endCol: number
+  ) {
+    for (let rowIndex = startRow; rowIndex <= endRow; rowIndex += 1) {
+      const row = sheet.getRow(rowIndex);
+      row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+        if (colNumber < startCol || colNumber > endCol) {
+          return;
+        }
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+          left: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+          bottom: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+          right: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+        };
+        if (!cell.alignment) {
+          cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+        }
+      });
+    }
+  }
+
+  private addArtifactsToZip(zip: AdmZip, profileResultsDir: string) {
+    const testCaseDirs = fs
+      .readdirSync(profileResultsDir, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name);
+
+    for (const testCaseId of testCaseDirs) {
+      const testCaseDir = path.join(profileResultsDir, testCaseId);
+      const testCaseName = this.getTestCaseFolderName(testCaseId, testCaseDir);
+      const runDirs = fs
+        .readdirSync(testCaseDir, { withFileTypes: true })
+        .filter((entry) => entry.isDirectory())
+        .map((entry) => entry.name)
+        .sort();
+
+      if (runDirs.length === 0) {
+        continue;
+      }
+
+      const latestRunDir = path.join(testCaseDir, runDirs[runDirs.length - 1]);
+      const artifacts: Array<{ name: string; sourcePath: string }> = [];
+
+      const parameterPath = path.join(latestRunDir, 'data', 'parameter.json');
+      if (fs.existsSync(parameterPath)) {
+        artifacts.push({ name: 'parameter.json', sourcePath: parameterPath });
+      }
+
+      const testCasePath = path.join(latestRunDir, 'data', 'test-case.json');
+      if (fs.existsSync(testCasePath)) {
+        artifacts.push({ name: 'test-case.json', sourcePath: testCasePath });
+      }
+
+      const summaryPath = path.join(latestRunDir, 'summary-result.json');
+      if (fs.existsSync(summaryPath)) {
+        artifacts.push({ name: 'summary-result.json', sourcePath: summaryPath });
+      }
+
+      if (artifacts.length === 0) {
+        continue;
+      }
+
+      const artifactFolder = path.posix.join('artifacts', testCaseName);
+
+      for (const artifact of artifacts) {
+        zip.addFile(
+          path.posix.join(artifactFolder, artifact.name),
+          fs.readFileSync(artifact.sourcePath)
+        );
+      }
+    }
+  }
+
+  private getTestCaseFolderName(testCaseId: string, testCaseDir: string): string {
+    const testCase = TestCaseRepository.getById(testCaseId);
+    if (!testCase) {
+      const fromArtifact = this.readTestCaseNameFromArtifacts(testCaseDir);
+      return fromArtifact ? this.sanitizeFolderName(fromArtifact) : testCaseId;
+    }
+    return this.sanitizeFolderName(testCase.name || testCaseId);
+  }
+
+  private sanitizeFolderName(value: string): string {
+    const sanitized = value
+      .replace(/[<>:"/\\|?*\x00-\x1F]/g, '_')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return sanitized || 'test-case';
+  }
+
+  private readTestCaseNameFromArtifacts(testCaseDir: string): string | null {
+    try {
+      const runDir = fs
+        .readdirSync(testCaseDir, { withFileTypes: true })
+        .find((entry) => entry.isDirectory());
+      if (!runDir) {
+        return null;
+      }
+
+      const testCasePath = path.join(testCaseDir, runDir.name, 'data', 'test-case.json');
+      if (!fs.existsSync(testCasePath)) {
+        return null;
+      }
+
+      const raw = fs.readFileSync(testCasePath, 'utf8');
+      const parsed = JSON.parse(raw) as { name?: string };
+      if (typeof parsed.name === 'string' && parsed.name.trim()) {
+        return parsed.name.trim();
+      }
+    } catch {
+      return null;
+    }
+
+    return null;
+  }
+
+  private buildSummaryStats(
+    testCases: Array<{
+      status?: string | null;
+      executionDuration?: number | null;
+    }>
+  ) {
+    const total = testCases.length;
+    const totalSuccess = testCases.filter((item) => item.status === 'success').length;
+    const totalFailed = testCases.filter((item) => item.status === 'failed').length;
+    const totalError = testCases.filter((item) => item.status === 'error').length;
+    const totalRunning = testCases.filter((item) => item.status === 'running').length;
+    const durations = testCases
+      .map((item) => item.executionDuration)
+      .filter((value): value is number => typeof value === 'number' && value >= 0);
+    const avgDuration =
+      durations.length > 0
+        ? Math.round(durations.reduce((sum, value) => sum + value, 0) / durations.length)
+        : null;
+
+    return {
+      total,
+      totalSuccess,
+      totalFailed,
+      totalError,
+      totalRunning,
+      avgDuration,
+    };
+  }
+
+  private buildReportBaseName(profileName: string): string {
+    const slug = profileName
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+    const timestamp = this.formatTimestamp(new Date());
+    return `test-cases-report-${slug || 'profile'}-${timestamp}`;
+  }
+
+  private formatTimestamp(value: Date): string {
+    const pad = (input: number) => String(input).padStart(2, '0');
+    return `${value.getFullYear()}${pad(value.getMonth() + 1)}${pad(value.getDate())}${pad(
+      value.getHours()
+    )}${pad(value.getMinutes())}${pad(value.getSeconds())}`;
   }
 
   private getLatestResultSummary(

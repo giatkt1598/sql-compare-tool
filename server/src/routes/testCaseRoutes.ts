@@ -12,6 +12,33 @@ const router = express.Router();
 
 /**
  * @swagger
+ * /api/test-cases/profile/{profileId}/export:
+ *   get:
+ *     summary: Export test case report
+ *     description: Generates a ZIP report containing an Excel summary for the profile test cases.
+ *     tags:
+ *       - Test Cases
+ *     parameters:
+ *       - in: path
+ *         name: profileId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Profile ID
+ *     responses:
+ *       200:
+ *         description: Report generated successfully
+ *         content:
+ *           application/zip:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       400:
+ *         description: Invalid profile ID
+ *       404:
+ *         description: Profile not found
+ *
+ * @swagger
  * /api/test-cases/profile/{profileId}:
  *   get:
  *     summary: Get test cases by profile ID
@@ -38,6 +65,7 @@ const router = express.Router();
  *         description: Invalid profile ID
  */
 router.get('/profile/:profileId', TestCaseController.getByProfileId.bind(TestCaseController));
+router.get('/profile/:profileId/export', TestCaseController.exportReport.bind(TestCaseController));
 
 /**
  * @swagger

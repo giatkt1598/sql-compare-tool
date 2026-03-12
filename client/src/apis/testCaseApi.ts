@@ -54,6 +54,14 @@ class TestCaseApi extends ApiService {
       rows,
     });
   }
+
+  exportReport(profileId: string) {
+    return this.requestResponse<Blob>({
+      method: 'GET',
+      url: this.buildUrl(`/profile/${profileId}/export`),
+      responseType: 'blob',
+    });
+  }
 }
 
 export const testCaseApi = new TestCaseApi();

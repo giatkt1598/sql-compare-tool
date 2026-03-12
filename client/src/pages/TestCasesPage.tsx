@@ -44,6 +44,7 @@ import { sqlApi } from '../apis/sqlApi';
 import { sqlParameterApi } from '../apis/sqlParameterApi';
 import { testCaseApi } from '../apis/testCaseApi';
 import DbBreadcrumbSubtitle from '../components/common/DbBreadcrumbSubtitle';
+import TestCaseExportButton from '../components/test-cases/TestCaseExportButton';
 import TestCaseImportDialog from '../components/test-cases/TestCaseImportDialog';
 import type { Profile } from '../models/profile';
 import type { SqlParameter } from '../models/sqlParameter';
@@ -118,8 +119,7 @@ function TestCasesPage() {
   ].includes(initialSortFieldParam)
     ? (initialSortFieldParam as SortField)
     : 'name';
-  const initialSortDirection: SortDirection =
-    initialSortDirectionParam === 'desc' ? 'desc' : 'asc';
+  const initialSortDirection: SortDirection = initialSortDirectionParam === 'desc' ? 'desc' : 'asc';
   const [sortField, setSortField] = useState<SortField>(initialSortField);
   const [sortDirection, setSortDirection] = useState<SortDirection>(initialSortDirection);
   const initialPageParam = Number.parseInt(searchParams.get('page') ?? '1', 10);
@@ -589,6 +589,11 @@ function TestCasesPage() {
           >
             Edit SQL Parameters
           </Button>
+          <TestCaseExportButton
+            profileId={profileId}
+            onError={(message) => showToast(message, 'error')}
+            onSuccess={(message) => showToast(message, 'success')}
+          />
           <Button
             variant="contained"
             startIcon={<UploadFileOutlinedIcon />}
