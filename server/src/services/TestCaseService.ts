@@ -555,6 +555,7 @@ class TestCaseService {
 
   private sanitizeFolderName(value: string): string {
     const sanitized = value
+      // eslint-disable-next-line no-control-regex
       .replace(/[<>:"/\\|?*\x00-\x1F]/g, '_')
       .replace(/\s+/g, ' ')
       .trim();

@@ -4,7 +4,6 @@ import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import PlayArrowOutlinedIcon from '@mui/icons-material/PlayArrowOutlined';
 import PlaylistPlayOutlinedIcon from '@mui/icons-material/PlaylistPlayOutlined';
-import SelectAllOutlinedIcon from '@mui/icons-material/SelectAllOutlined';
 import TuneOutlinedIcon from '@mui/icons-material/TuneOutlined';
 import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined';
 import dayjs from 'dayjs';
@@ -769,8 +768,8 @@ function TestCasesPage() {
                   py: 1,
                   borderBottom: '1px solid',
                   borderColor: 'divider',
-                  bgcolor: '#C8FAD6',
-                  color: '#00A76F',
+                  bgcolor: (theme) => (theme.palette.mode === 'dark' ? '#1F1205' : '#C8FAD6'),
+                  color: (theme) => (theme.palette.mode === 'dark' ? '#FF7A2F' : '#00A76F'),
                   position: 'absolute',
                   top: 0,
                   left: 0,
