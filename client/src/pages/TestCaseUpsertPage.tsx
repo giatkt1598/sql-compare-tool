@@ -170,7 +170,6 @@ function TestCaseUpsertPage() {
     void fetchData();
   }, [profileId, isEditMode, testCaseId]);
 
-
   const handleSubmit = async () => {
     if (!profileId || !existingTestCase) {
       setError('Invalid state to save test case');
@@ -373,7 +372,9 @@ function TestCaseUpsertPage() {
             provider={profile?.sqlProvider}
             profileName={profile?.name}
             tailLabel={
-              isEditMode ? existingTestCase?.name ?? testCaseId ?? 'Edit Test Case' : formValue.name
+              isEditMode
+                ? (existingTestCase?.name ?? testCaseId ?? 'Edit Test Case')
+                : formValue.name
             }
           />
         </Box>
@@ -409,7 +410,7 @@ function TestCaseUpsertPage() {
 
             <TextField
               size="small"
-              label="Expected Execution Duration (ms)"
+              label="Expected Execution Duration for New SQL (ms)"
               type="number"
               value={formValue.expectedExecutionDuration}
               onChange={(event) =>
