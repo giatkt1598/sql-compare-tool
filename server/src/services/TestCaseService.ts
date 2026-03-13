@@ -318,10 +318,12 @@ class TestCaseService {
     const parameterKeys = this.collectParameterKeys(testCases);
     const columns = [
       { header: 'Name', key: 'name', width: 36 },
-      { header: 'Execution Duration (ms)', key: 'duration', width: 24 },
+      { header: 'Execution Duration (Old)', key: 'oldDuration', width: 26 },
+      { header: 'Execution Duration (New)', key: 'newDuration', width: 26 },
       { header: 'Row Count (Old)', key: 'oldCount', width: 18 },
       { header: 'Row Count (New)', key: 'newCount', width: 18 },
       ...parameterKeys.map((key) => ({ header: key, key, width: 20 })),
+      { header: 'Improvement (%)', key: 'improvement', width: 18 },
       { header: 'Status', key: 'status', width: 16 },
     ];
     const headerRowIndex = testCaseSheet.rowCount + 1;
@@ -334,8 +336,10 @@ class TestCaseService {
     headerRow.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
     headerRow.height = 20;
 
+    const parameterColumnStart = 6;
+    const parameterColumnEnd = parameterColumnStart - 1 + parameterKeys.length;
     headerRow.eachCell((cell, colNumber) => {
-      const isFixedColumn = colNumber <= 4 || colNumber === columns.length;
+      const isFixedColumn = colNumber < parameterColumnStart || colNumber > parameterColumnEnd;
       cell.fill = {
         type: 'pattern',
         pattern: 'solid',
@@ -347,9 +351,11 @@ class TestCaseService {
       const parameterValues = this.parseParameterValues(testCase.parameter ?? '');
       const rowValues: Record<string, unknown> = {
         name: testCase.name,
-        duration: testCase.executionDuration ?? '',
+        oldDuration: testCase.latestResultSummary?.oldSqlDuration ?? '',
+        newDuration: testCase.latestResultSummary?.newSqlDuration ?? '',
         oldCount: testCase.latestResultSummary?.oldCount ?? '',
         newCount: testCase.latestResultSummary?.newCount ?? '',
+        improvement: '',
         status: testCase.status ?? '',
       };
 
@@ -358,13 +364,44 @@ class TestCaseService {
       }
 
       const addedRow = testCaseSheet.addRow(rowValues);
-      const statusCell = addedRow.getCell(columns.length);
+      const statusCellIndex = 6 + parameterKeys.length + 1;
+      const statusCell = addedRow.getCell(statusCellIndex);
       statusCell.fill = {
         type: 'pattern',
         pattern: 'solid',
         fgColor: { argb: this.getStatusFillColor(testCase.status) },
       };
       statusCell.alignment = { horizontal: 'center', vertical: 'middle' };
+
+      const oldDuration =
+        typeof testCase.latestResultSummary?.oldSqlDuration === 'number'
+          ? testCase.latestResultSummary.oldSqlDuration
+          : null;
+      const newDuration =
+        typeof testCase.latestResultSummary?.newSqlDuration === 'number'
+          ? testCase.latestResultSummary.newSqlDuration
+          : null;
+
+      if (oldDuration && newDuration !== null && oldDuration > 0) {
+        const improvement = 1 - newDuration / oldDuration;
+        const improvementCell = addedRow.getCell(columns.length - 1);
+        improvementCell.value = Number.isFinite(improvement)
+          ? `${Math.round(improvement * 100)}`
+          : '';
+        if (improvement < 0) {
+          improvementCell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFFEE2E2' },
+          };
+        } else if (improvement > 0.1) {
+          improvementCell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFC6F6D5' },
+          };
+        }
+      }
     }
 
     this.applyTableBorders(
