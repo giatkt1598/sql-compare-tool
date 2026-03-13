@@ -21,6 +21,7 @@ import DbBreadcrumbSubtitle from '../components/common/DbBreadcrumbSubtitle';
 import SqlQueryPreviewDialog, {
   type SqlQueryPreviewDialogValue,
 } from '../components/test-cases/SqlQueryPreviewDialog';
+import SqlParameterInput from '../components/test-cases/SqlParameterInput';
 import TestCaseFormOptions from '../components/test-cases/TestCaseFormOptions';
 import { testCaseApi } from '../apis/testCaseApi';
 import type { Profile } from '../models/profile';
@@ -90,6 +91,7 @@ function TestCaseUpsertPage() {
   const [isQueryDialogOpen, setIsQueryDialogOpen] = useState(false);
   const [queryTab, setQueryTab] = useState<'old' | 'new'>('old');
   const [queryPreview, setQueryPreview] = useState<SqlQueryPreviewDialogValue | null>(null);
+  const [sqlParameters, setSqlParameters] = useState<SqlParameter[]>([]);
   const [toast, setToast] = useState<ToastState>({
     open: false,
     message: '',
@@ -112,6 +114,7 @@ function TestCaseUpsertPage() {
           testCaseApi.getByProfileId(profileId),
           profileApi.getById(profileId),
         ]);
+        setSqlParameters(parameters);
         setProfile(resolvedProfile);
 
         if (isEditMode && testCaseId) {
@@ -166,6 +169,7 @@ function TestCaseUpsertPage() {
 
     void fetchData();
   }, [profileId, isEditMode, testCaseId]);
+
 
   const handleSubmit = async () => {
     if (!profileId || !existingTestCase) {
@@ -391,19 +395,16 @@ function TestCaseUpsertPage() {
               }
             />
 
-            <TextField
-              size="small"
-              label="SQL Parameters"
-              multiline
-              minRows={10}
+            <SqlParameterInput
               value={formValue.parameter}
-              onChange={(event) =>
+              sqlParameters={sqlParameters}
+              defaultValue={buildSampleJson(sqlParameters)}
+              onChange={(nextValue) =>
                 setFormValue((current) => ({
                   ...current,
-                  parameter: event.target.value,
+                  parameter: nextValue,
                 }))
               }
-              helperText="JSON string for sql parameters"
             />
 
             <TextField
