@@ -1,0 +1,1 @@
+export const IMPROVEMENT_THRESHOLD = 0.1;

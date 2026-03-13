@@ -48,6 +48,7 @@ import { testCaseApi } from '../apis/testCaseApi';
 import DbBreadcrumbSubtitle from '../components/common/DbBreadcrumbSubtitle';
 import TestCaseExportButton from '../components/test-cases/TestCaseExportButton';
 import TestCaseImportDialog from '../components/test-cases/TestCaseImportDialog';
+import { IMPROVEMENT_THRESHOLD } from '../constants/testCaseConstants';
 import type { Profile } from '../models/profile';
 import type { SqlParameter } from '../models/sqlParameter';
 import type { TestCase } from '../models/testCase';
@@ -492,9 +493,9 @@ function TestCasesPage() {
     let improvementValue: number | null = null;
     if (typeof oldDuration === 'number' && oldDuration > 0) {
       improvementValue = 1 - newDuration / oldDuration;
-      if (improvementValue > 0.1) {
+      if (improvementValue > IMPROVEMENT_THRESHOLD) {
         color = 'success';
-      } else if (improvementValue < -0.1) {
+      } else if (improvementValue < -IMPROVEMENT_THRESHOLD) {
         color = 'error';
       }
     }
@@ -502,7 +503,7 @@ function TestCasesPage() {
     const improvementLabel =
       improvementValue === null
         ? 'Improvement: -'
-        : `Improvement: ${(improvementValue * 100).toFixed(2)}%`;
+        : `Improvement: ${Math.round(improvementValue * 100)}%`;
     const oldDurationLabel =
       typeof oldDuration === 'number' ? `${oldDuration.toLocaleString()} ms` : '-';
 
@@ -510,6 +511,7 @@ function TestCasesPage() {
       <Tooltip
         title={
           <Stack>
+            <Box>Total Execution Duration: {item.executionDuration?.toLocaleString()}&nbsp;ms</Box>
             <Box>Old SQL Duration: {oldDurationLabel}</Box>
             <Box>
               Execution Time:&nbsp;
@@ -564,11 +566,29 @@ function TestCasesPage() {
     const totalError = items.filter((item) => item.status === 'error').length;
     const totalRunning = items.filter((item) => item.status === 'running').length;
     const durationValues = items
-      .map((item) => item.executionDuration)
+      .map((item) => item.latestResultSummary?.newSqlDuration)
       .filter((value): value is number => typeof value === 'number' && value >= 0);
     const avgDuration =
       durationValues.length > 0
         ? Math.round(durationValues.reduce((sum, value) => sum + value, 0) / durationValues.length)
+        : null;
+    const improvements = items
+      .map((item) => {
+        const oldDuration = item.latestResultSummary?.oldSqlDuration;
+        const newDuration = item.latestResultSummary?.newSqlDuration;
+        if (
+          typeof oldDuration !== 'number' ||
+          typeof newDuration !== 'number' ||
+          oldDuration <= 0
+        ) {
+          return null;
+        }
+        return 1 - newDuration / oldDuration;
+      })
+      .filter((value): value is number => value !== null && Number.isFinite(value));
+    const avgImprovement =
+      improvements.length > 0
+        ? improvements.reduce((sum, value) => sum + value, 0) / improvements.length
         : null;
 
     return {
@@ -578,6 +598,7 @@ function TestCasesPage() {
       totalError,
       totalRunning,
       avgDuration,
+      avgImprovement,
     };
   }, [items]);
 
@@ -747,10 +768,31 @@ function TestCasesPage() {
             </Paper>
             <Paper sx={{ p: 2, flex: 1 }}>
               <Typography variant="caption" color="text.secondary">
-                Avg Duration
+                Avg Duration (New)
               </Typography>
               <Typography variant="h6">
                 {summary.avgDuration !== null ? `${summary.avgDuration.toLocaleString()} ms` : '-'}
+              </Typography>
+            </Paper>
+            <Paper sx={{ p: 2, flex: 1 }}>
+              <Typography variant="caption" color="text.secondary">
+                Improvement (%)
+              </Typography>
+              <Typography
+                variant="h6"
+                color={
+                  summary.avgImprovement !== null
+                    ? summary.avgImprovement > IMPROVEMENT_THRESHOLD
+                      ? 'success.main'
+                      : summary.avgImprovement < -IMPROVEMENT_THRESHOLD
+                        ? 'error.main'
+                        : 'text.primary'
+                    : 'text.primary'
+                }
+              >
+                {summary.avgImprovement !== null
+                  ? `${(summary.avgImprovement * 100).toFixed(2)}%`
+                  : '-'}
               </Typography>
             </Paper>
             <Paper sx={{ p: 2, flex: 1 }}>

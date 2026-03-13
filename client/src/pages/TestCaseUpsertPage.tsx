@@ -126,10 +126,6 @@ function TestCaseUpsertPage() {
             enabled: testCase.enabled,
             compareInOrder: testCase.compareInOrder,
             parallelExecution: testCase.parallelExecution,
-            expectedExecutionDuration:
-              testCase.expectedExecutionDuration !== null
-                ? String(testCase.expectedExecutionDuration)
-                : '',
             autoRunWhenSqlChanges: testCase.autoRunWhenSqlChanges,
           });
         } else {
@@ -142,7 +138,6 @@ function TestCaseUpsertPage() {
             parameter: '',
             compareInOrder: false,
             parallelExecution: true,
-            expectedExecutionDuration: null,
             autoRunWhenSqlChanges: false,
             executionCount: 0,
             status: null,
@@ -185,10 +180,6 @@ function TestCaseUpsertPage() {
           parameter: formValue.parameter,
           compareInOrder: formValue.compareInOrder,
           parallelExecution: formValue.parallelExecution,
-          expectedExecutionDuration:
-            formValue.expectedExecutionDuration.trim() === ''
-              ? null
-              : Number(formValue.expectedExecutionDuration),
           enabled: formValue.enabled,
         });
       } else {
@@ -199,10 +190,6 @@ function TestCaseUpsertPage() {
           parameter: formValue.parameter,
           compareInOrder: formValue.compareInOrder,
           parallelExecution: formValue.parallelExecution,
-          expectedExecutionDuration:
-            formValue.expectedExecutionDuration.trim() === ''
-              ? null
-              : Number(formValue.expectedExecutionDuration),
           autoRunWhenSqlChanges: false,
           executionCount: 0,
           enabled: formValue.enabled,
@@ -246,10 +233,6 @@ function TestCaseUpsertPage() {
         enabled: formValue.enabled,
         compareInOrder: formValue.compareInOrder,
         parallelExecution: formValue.parallelExecution,
-        expectedExecutionDuration:
-          formValue.expectedExecutionDuration.trim() === ''
-            ? null
-            : Number(formValue.expectedExecutionDuration),
       });
 
       setExistingTestCase((current) =>
@@ -408,20 +391,6 @@ function TestCaseUpsertPage() {
               }
             />
 
-            <TextField
-              size="small"
-              label="Expected Execution Duration for New SQL (ms)"
-              type="number"
-              value={formValue.expectedExecutionDuration}
-              onChange={(event) =>
-                setFormValue((current) => ({
-                  ...current,
-                  expectedExecutionDuration: event.target.value,
-                }))
-              }
-              helperText="Optional. Used to highlight execution duration in the test case list."
-              inputProps={{ min: 0, step: 1 }}
-            />
             <TestCaseFormOptions value={formValue} onChange={setFormValue} />
 
             <Stack direction="row" spacing={1.5} justifyContent="space-between">

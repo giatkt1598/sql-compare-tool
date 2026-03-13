@@ -22,7 +22,6 @@ const FIXED_COLUMNS = [
   'Compare In Order',
   'Parallel Execution',
   'Enabled',
-  'Expected Execution Duration',
 ];
 
 const FIXED_COLUMN_SET = new Set(FIXED_COLUMNS.map((item) => item.toLowerCase()));
@@ -32,7 +31,6 @@ interface ParsedRow {
   compareInOrder: boolean;
   parallelExecution: boolean;
   enabled: boolean;
-  expectedExecutionDuration: number | null;
   parameter: Record<string, unknown>;
 }
 
@@ -68,15 +66,6 @@ function parseBoolean(value: unknown, fallback: boolean): boolean {
   }
 
   return fallback;
-}
-
-function parseNumber(value: unknown): number | null {
-  if (value === null || value === undefined || value === '') {
-    return null;
-  }
-
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
 }
 
 export default function TestCaseImportDialog({
@@ -201,9 +190,6 @@ export default function TestCaseImportDialog({
           true
         );
         const enabled = parseBoolean(row.getCell(headerMap.get('enabled') ?? 0).value, true);
-        const expectedExecutionDuration = parseNumber(
-          row.getCell(headerMap.get('expected execution duration') ?? 0).value
-        );
 
         const parameter: Record<string, unknown> = {};
         parameterNames.forEach((paramName) => {
@@ -221,7 +207,6 @@ export default function TestCaseImportDialog({
           compareInOrder,
           parallelExecution,
           enabled,
-          expectedExecutionDuration,
           parameter,
         });
       });

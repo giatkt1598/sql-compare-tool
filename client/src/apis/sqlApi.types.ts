@@ -15,7 +15,6 @@ export interface RunTestCaseDraftPayload {
   enabled?: boolean;
   compareInOrder?: boolean;
   parallelExecution?: boolean;
-  expectedExecutionDuration?: number | null;
 }
 
 export interface SqlRunManyTestCasesPayload {

@@ -52,7 +52,6 @@ class TestCaseApi extends ApiService {
       compareInOrder: boolean;
       parallelExecution: boolean;
       enabled: boolean;
-      expectedExecutionDuration: number | null;
       parameter: Record<string, unknown>;
     }>
   ) {

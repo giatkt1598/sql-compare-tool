@@ -3,6 +3,7 @@ import path from 'node:path';
 import ExcelJS from 'exceljs';
 import AdmZip from 'adm-zip';
 import { FILE_PATHS } from '../config/fileConstants';
+import { IMPROVEMENT_THRESHOLD } from '../config/testCaseConstants';
 import ProfileRepository from '../repositories/ProfileRepository';
 import TestCaseRepository from '../repositories/TestCaseRepository';
 import TestCaseAutoRunService from './TestCaseAutoRunService';
@@ -170,7 +171,6 @@ class TestCaseService {
       compareInOrder?: boolean;
       parallelExecution?: boolean;
       enabled?: boolean;
-      expectedExecutionDuration?: number | null;
       parameter?: Record<string, unknown>;
     }>
   ) {
@@ -199,8 +199,6 @@ class TestCaseService {
         parameter: parameterJson,
         compareInOrder: row.compareInOrder ?? false,
         parallelExecution: row.parallelExecution ?? true,
-        expectedExecutionDuration:
-          row.expectedExecutionDuration === undefined ? null : row.expectedExecutionDuration,
         enabled: row.enabled ?? true,
         executionCount: 0,
         status: null,
@@ -283,6 +281,13 @@ class TestCaseService {
         field: 'Average Execution Duration (ms)',
         value: stats.avgDuration !== null ? stats.avgDuration : '',
       },
+      {
+        field: 'Improvement (%)',
+        value:
+          stats.avgImprovement !== null
+            ? `${(stats.avgImprovement * 100).toFixed(2)}%`
+            : '',
+      },
       { field: 'Exported At', value: new Date().toISOString() },
     ]);
 
@@ -323,8 +328,8 @@ class TestCaseService {
       { header: 'Row Count (Old)', key: 'oldCount', width: 18 },
       { header: 'Row Count (New)', key: 'newCount', width: 18 },
       ...parameterKeys.map((key) => ({ header: key, key, width: 20 })),
-      { header: 'Improvement (%)', key: 'improvement', width: 18 },
       { header: 'Status', key: 'status', width: 16 },
+      { header: 'Improvement (%)', key: 'improvement', width: 18 },
     ];
     const headerRowIndex = testCaseSheet.rowCount + 1;
     testCaseSheet.addRow(columns.map((col) => col.header));
@@ -355,8 +360,8 @@ class TestCaseService {
         newDuration: testCase.latestResultSummary?.newSqlDuration ?? '',
         oldCount: testCase.latestResultSummary?.oldCount ?? '',
         newCount: testCase.latestResultSummary?.newCount ?? '',
-        improvement: '',
         status: testCase.status ?? '',
+        improvement: '',
       };
 
       for (const key of parameterKeys) {
@@ -364,7 +369,7 @@ class TestCaseService {
       }
 
       const addedRow = testCaseSheet.addRow(rowValues);
-      const statusCellIndex = 6 + parameterKeys.length + 1;
+      const statusCellIndex = 6 + parameterKeys.length;
       const statusCell = addedRow.getCell(statusCellIndex);
       statusCell.fill = {
         type: 'pattern',
@@ -384,17 +389,17 @@ class TestCaseService {
 
       if (oldDuration && newDuration !== null && oldDuration > 0) {
         const improvement = 1 - newDuration / oldDuration;
-        const improvementCell = addedRow.getCell(columns.length - 1);
+        const improvementCell = addedRow.getCell(statusCellIndex + 1);
         improvementCell.value = Number.isFinite(improvement)
           ? `${Math.round(improvement * 100)}`
           : '';
-        if (improvement < 0) {
+        if (improvement < -IMPROVEMENT_THRESHOLD) {
           improvementCell.fill = {
             type: 'pattern',
             pattern: 'solid',
             fgColor: { argb: 'FFFEE2E2' },
           };
-        } else if (improvement > 0.1) {
+        } else if (improvement > IMPROVEMENT_THRESHOLD) {
           improvementCell.fill = {
             type: 'pattern',
             pattern: 'solid',
@@ -629,6 +634,7 @@ class TestCaseService {
     testCases: Array<{
       status?: string | null;
       executionDuration?: number | null;
+      latestResultSummary?: LatestResultSummary | null;
     }>
   ) {
     const total = testCases.length;
@@ -643,6 +649,18 @@ class TestCaseService {
       durations.length > 0
         ? Math.round(durations.reduce((sum, value) => sum + value, 0) / durations.length)
         : null;
+    const improvements = testCases
+      .map((item) => {
+        const oldDuration = item.latestResultSummary?.oldSqlDuration;
+        const newDuration = item.latestResultSummary?.newSqlDuration;
+        if (typeof oldDuration !== 'number' || typeof newDuration !== 'number' || oldDuration <= 0) {
+          return null;
+        }
+        return 1 - newDuration / oldDuration;
+      })
+      .filter((value): value is number => value !== null && Number.isFinite(value));
+    const avgImprovement =
+      improvements.length > 0 ? improvements.reduce((sum, value) => sum + value, 0) / improvements.length : null;
 
     return {
       total,
@@ -651,6 +669,7 @@ class TestCaseService {
       totalError,
       totalRunning,
       avgDuration,
+      avgImprovement,
     };
   }
 
