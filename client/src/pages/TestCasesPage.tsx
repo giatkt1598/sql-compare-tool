@@ -37,6 +37,7 @@ import {
   Tooltip,
   TextField,
   Typography,
+  Box,
 } from '@mui/material';
 import { type ChangeEvent, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -479,29 +480,56 @@ function TestCasesPage() {
   };
 
   const renderExecutionDurationCell = (item: TestCase) => {
-    if (typeof item.executionDuration !== 'number') {
+    const newDuration = item.latestResultSummary?.newSqlDuration;
+    if (typeof newDuration !== 'number') {
       return '-';
     }
 
-    const label = `${item.executionDuration.toLocaleString()} ms`;
-    const expected = item.expectedExecutionDuration;
+    const oldDuration = item.latestResultSummary?.oldSqlDuration;
+    const label = `${newDuration.toLocaleString()} ms`;
 
-    if (typeof expected !== 'number' || expected <= 0) {
-      return label;
+    let color: 'success' | 'error' | 'inherit' = 'inherit';
+    let improvementValue: number | null = null;
+    if (typeof oldDuration === 'number' && oldDuration > 0) {
+      improvementValue = 1 - newDuration / oldDuration;
+      if (improvementValue > 0.1) {
+        color = 'success';
+      } else if (improvementValue < -0.1) {
+        color = 'error';
+      }
     }
 
-    let color: 'success' | 'warning' | 'error' = 'success';
-    if (item.executionDuration > expected) {
-      color = 'error';
-    } else if (item.executionDuration >= expected * 0.8) {
-      color = 'warning';
-    }
+    const improvementLabel =
+      improvementValue === null
+        ? 'Improvement: -'
+        : `Improvement: ${(improvementValue * 100).toFixed(2)}%`;
+    const oldDurationLabel =
+      typeof oldDuration === 'number' ? `${oldDuration.toLocaleString()} ms` : '-';
 
     return (
-      <Tooltip title={`Expected: ${expected.toLocaleString()} ms`} arrow>
-        <Typography variant="subtitle2" color={color} fontWeight={600}>
-          {label}
-        </Typography>
+      <Tooltip
+        title={
+          <Stack>
+            <Box>Old SQL Duration: {oldDurationLabel}</Box>
+            <Box>
+              Execution Time:&nbsp;
+              {item.executionTime
+                ? new Date(item.executionTime).toLocaleString() +
+                  ` (${dayjs(item.executionTime).fromNow()})`
+                : '-'}
+            </Box>
+          </Stack>
+        }
+        arrow
+      >
+        <Stack spacing={0.25}>
+          <Typography variant="subtitle2" color={color} fontWeight={600}>
+            {label}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            {improvementLabel}
+          </Typography>
+        </Stack>
       </Tooltip>
     );
   };
@@ -576,7 +604,9 @@ function TestCasesPage() {
       if (sortField === 'name') {
         comparison = left.name.localeCompare(right.name);
       } else if (sortField === 'executionDuration') {
-        comparison = (left.executionDuration ?? -1) - (right.executionDuration ?? -1);
+        comparison =
+          (left.latestResultSummary?.newSqlDuration ?? -1) -
+          (right.latestResultSummary?.newSqlDuration ?? -1);
       } else if (sortField === 'executionTime') {
         comparison =
           new Date(left.executionTime ?? 0).getTime() -
@@ -806,22 +836,13 @@ function TestCasesPage() {
                         Name
                       </TableSortLabel>
                     </TableCell>
-                    <TableCell width={140} padding="none">
+                    <TableCell width={200} padding="none">
                       <TableSortLabel
                         active={sortField === 'executionDuration'}
                         direction={sortField === 'executionDuration' ? sortDirection : 'asc'}
                         onClick={() => handleSort('executionDuration')}
                       >
-                        Execute Duration
-                      </TableSortLabel>
-                    </TableCell>
-                    <TableCell width={160}>
-                      <TableSortLabel
-                        active={sortField === 'executionTime'}
-                        direction={sortField === 'executionTime' ? sortDirection : 'asc'}
-                        onClick={() => handleSort('executionTime')}
-                      >
-                        Execute Time
+                        Execution Duration (New)
                       </TableSortLabel>
                     </TableCell>
                     <TableCell width={160}>Rows Count</TableCell>
@@ -906,20 +927,6 @@ function TestCasesPage() {
                         </TableCell>
                         <TableCell>{item.name}</TableCell>
                         <TableCell>{renderExecutionDurationCell(item)}</TableCell>
-                        <TableCell>
-                          {item.executionTime ? (
-                            <Stack spacing={0.25}>
-                              <Typography variant="body2">
-                                {new Date(item.executionTime).toLocaleString()}
-                              </Typography>
-                              <Typography variant="caption" color="text.secondary">
-                                {dayjs(item.executionTime).fromNow()}
-                              </Typography>
-                            </Stack>
-                          ) : (
-                            '-'
-                          )}
-                        </TableCell>
                         <TableCell>{renderRowsCountCell(item)}</TableCell>
 
                         <TableCell>
